@@ -1,16 +1,27 @@
 # Roadmap
 
 ## Planning
-- Confirm the documented minimal user flows meet day-to-day needs.
+- Planning and validation tasks are tracked in the prioritized list below.
 
 ## Software foundation
-- Implement the C# web UI shell and navigation for inventory tasks.
-- Integrate WLED control endpoints for pick-by-light activation.
-- Support multiple ESP32 targets across different racks.
-- Persist inventory data without a database (e.g., JSON-backed storage).
+- Foundation tasks (backend services, UI shell, WLED integration, multi-ESP32 support) are tracked in the prioritized list below.
 
 ## Usability and refinement
-- Add search filters and quick-pick workflows.
-- Improve labeling, calibration, and LED brightness profiles.
-- Validate performance and reliability in day-to-day use.
-- Expand maintenance flows for import/export and rich metadata.
+- Usability tasks (search, labeling, performance, import/export) are tracked in the prioritized list below.
+
+## Open tasks (prioritized)
+### P0 — Next steps
+- Define a backend service layer around the JSON stores (CRUD for master, movement, and index data).
+- Add JSON schema validation on read/write with clear error reporting.
+- Establish a minimal web UI skeleton in Python (navigation and inventory views).
+- Expand unit tests for validation failures and file-not-found scenarios.
+
+### P1 — After P0
+- Implement search and filtering APIs to support the UI.
+- Add WLED control integration for pick-by-light workflows.
+- Support multiple ESP32 targets with configurable rack mappings.
+- Add import/export maintenance flows for master data.
+
+### P2 — Later
+- Add performance checks for large inventories and monthly movement files.
+- Extend metadata management (labels, calibration profiles, and LED presets).
