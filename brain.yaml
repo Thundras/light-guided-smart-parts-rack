@@ -1,13 +1,13 @@
-# brain.yaml
-# Single source of truth for project rules, constraints, conventions and workflows.
-# DO NOT store project descriptions or goals here (belongs to README.md / ROADMAP.md).
-#
 # Prompt: Read `brain.yaml` from the repository root and follow it strictly. If `brain.yaml` is missing, stop and ask the user to add/copy the standard `brain.yaml` template into the repo.
+#
+# brain.yaml — Option B (Bootstrap docs without TODOs / placeholders)
+# Purpose: Persist ONLY rules, constraints, conventions, and workflows.
+# Do NOT store project descriptions or goals here (belongs to README.md / ROADMAP.md).
 
 meta:
   schema_version: 1
-  owner: "Stephan"
-  last_updated: "TODO: YYYY-MM-DD"
+  policy_variant: "Option B"
+  last_updated: "YYYY-MM-DD"
 
 language:
   documentation: "English"
@@ -20,63 +20,81 @@ files:
     - "ROADMAP.md"
   optional:
     - "docs/decisions.md"
-    - "docs/architecture.md"
-    - "docs/conventions.md"
 
 responsibilities:
   brain_yaml:
-    contains:
+    contains_only:
       - "rules"
       - "constraints"
       - "conventions"
       - "workflows"
-      - "decisions_policy"
+      - "policies"
     must_not_contain:
       - "project_description"
       - "goals"
       - "roadmap_content"
-  readme:
-    must_contain:
-      - "project_description"
-      - "purpose"
-      - "setup"
-      - "usage"
-  roadmap:
-    must_contain:
-      - "goals"
-      - "milestones"
-      - "planned_features"
-  patchnotes:
-    must_track:
-      - "user_visible_changes"
-      - "breaking_changes"
+      - "marketing_copy"
+  readme_md:
+    purpose: "Project description, purpose, setup, usage."
+  roadmap_md:
+    purpose: "Goals, milestones, planned features and scope."
+  patchnotes_md:
+    purpose: "Versioned, user-visible changes."
 
-documentation_rules:
-  global:
-    must_be_current: true
-    no_duplication_between_files: true
-    tone: "technical"
-  update_triggers:
-    on_user_visible_change:
-      - "PATCHNOTES.md"
-    on_scope_or_plan_change:
-      - "ROADMAP.md"
-    on_usage_or_setup_change:
-      - "README.md"
+documentation:
+  keep_up_to_date: true
+  no_duplication_between_files: true
+  tone: "technical"
+  placeholders:
+    # Hard ban: do not create TODO/TBD placeholders in documentation files.
+    allow_todo: false
+    allow_tbd: false
+    allow_fake_content: false
+    allow_unknown_placeholders: false
 
 bootstrap:
-  ensure_files_exist: true
-  create_missing_files_with_todos: true
-  do_not_invent_project_specifics: true
+  create_required_docs_if_missing: true
+  behavior_when_no_project_info:
+    # Option B: Create minimal docs, but do not ask by default and do not add placeholders.
+    ask_user_first: false
+    create_minimal_docs: true
+    do_not_invent_content: true
+    do_not_add_placeholders: true
+    require_honest_state_notice: true
 
-missing_info_policy:
-  if_project_specific_info_missing:
-    behavior: "ask_user_first"
-    questions:
-      - "What is the project about?"
-      - "What is the primary goal?"
-      - "Any explicit non-goals or hard constraints?"
-    allow_todos_if_safe: true
+bootstrap_templates:
+  # Used only when required docs are missing AND project info is not available.
+  # Must remain minimal, honest, and non-committal. No TODO/TBD.
+  README.md: |-
+    # Project Title
+
+    This project has been initialized, but no project-specific documentation has been defined yet.
+
+    This README will be expanded once the project scope, purpose, setup, and usage are specified.
+
+  ROADMAP.md: |-
+    # Roadmap
+
+    No roadmap has been defined yet.
+
+    Planned goals and milestones will be documented here once the project direction is clarified.
+
+  PATCHNOTES.md: |-
+    # Patch Notes
+
+    ## Unreleased
+    - Initial project setup.
+
+documentation_update_triggers:
+  # Keep docs current once real content exists.
+  on_user_visible_change:
+    - "PATCHNOTES.md"
+  on_breaking_change:
+    - "PATCHNOTES.md"
+  on_scope_or_plan_change:
+    - "ROADMAP.md"
+  on_usage_or_setup_change:
+    - "README.md"
 
 versioning:
   scheme: "semantic_versioning"
@@ -86,43 +104,59 @@ versioning:
     - "feature"
     - "improvement"
     - "fix"
+    - "docs"
+  patchnotes_format:
+    sections:
+      - "Breaking"
+      - "Features"
+      - "Improvements"
+      - "Fixes"
+      - "Docs"
 
 conventions:
   commits:
     standard: "conventional_commits"
-    examples:
-      - "feat(scope): add X"
-      - "fix(scope): correct Y"
-      - "docs: update README"
-  branching:
-    model: "simple"
+    allowed_types:
+      - "feat"
+      - "fix"
+      - "refactor"
+      - "perf"
+      - "test"
+      - "build"
+      - "ci"
+      - "chore"
+      - "docs"
     rules:
-      - "Keep main branch releasable"
-      - "Use short-lived feature branches when useful"
-  code_style:
-    enforce: false
-    notes: "TODO: add formatter/linter rules if needed"
+      - "Use imperative mood in subject."
+      - "Keep subject <= 72 characters."
+    examples:
+      - "feat(ui): add parts search"
+      - "fix(api): handle null supplier"
+      - "docs: update README"
 
 workflow:
   guardrails:
-    - "Do not violate constraints"
-    - "Do not add scope without updating ROADMAP.md"
-    - "Do not change user-facing behavior without PATCHNOTES.md"
-  default_steps_for_changes:
+    - "Never violate constraints."
+    - "Never invent project scope/goals."
+    - "Never add placeholders (TODO/TBD) to documentation."
+    - "Update PATCHNOTES.md for any user-visible change."
+    - "Update ROADMAP.md when scope/plan changes."
+    - "Update README.md when setup/usage changes."
+  default_steps_for_change:
     - "Implement change"
-    - "Update docs based on triggers"
-    - "If new stable rule/decision emerges: update brain.yaml"
+    - "Update documentation via triggers"
+    - "If a new stable rule/decision emerges: update brain.yaml"
     - "Keep changes minimal and reviewable"
 
 constraints:
   hard:
-    - "TODO: add hard constraints (e.g., local-first, no cloud, etc.)"
+    - "Define hard constraints here (e.g., local-first, no cloud)."
   non_goals:
-    - "TODO: add explicit non-goals (scope boundaries)"
+    - "Define explicit non-goals here (scope boundaries)."
   quality:
-    - "Prefer clarity over cleverness"
-    - "Avoid unnecessary abstractions"
-    - "Avoid speculative features"
+    - "Prefer clarity over cleverness."
+    - "Avoid unnecessary abstractions."
+    - "Avoid speculative features."
 
 architecture_policy:
   enabled: true
@@ -138,3 +172,7 @@ architecture_policy:
     - "Database schema strategy change"
     - "Architecture pattern change"
     - "Breaking change justification"
+
+conflict_policy:
+  if_user_instruction_conflicts_with_brain_yaml:
+    behavior: "surface_conflict_and_propose_update"
