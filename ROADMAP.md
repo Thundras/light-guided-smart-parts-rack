@@ -1,18 +1,7 @@
 # Roadmap
 
 ## Planning
-- Define rack dimensions, compartment count, and LED-to-compartment mapping.
-- Capture configuration rules for variable rack sizes and drawer-based layouts.
-- Specify how rows, drawers per row, and LEDs per drawer are defined.
-- Require rack entries to reference the target ESP32/WLED endpoint.
-- Require drawer entries to define pixel position and pixel count.
-- Specify the data model for parts, locations, and LED addresses.
-- Document the user flows for adding, editing, and searching parts.
-
-## Hardware bring-up
-- Select power supply, wiring plan, and LED chain limits for WS2812B.
-- Configure ESP32 with WLED and validate LED addressing scheme.
-- Build a minimal prototype with a subset of compartments.
+- Confirm the documented minimal user flows meet day-to-day needs.
 
 ## Software foundation
 - Implement the C# web UI shell and navigation for inventory tasks.

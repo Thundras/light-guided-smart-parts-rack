@@ -58,3 +58,8 @@ data/
 ## UI scope
 - Search criteria: name, category, manufacturer, drawer, and tags.
 - Maintenance: create, edit, delete, import/export, and notes/images.
+
+## User flows (single-user, minimal)
+- Add, edit, and search parts as the primary UI flows.
+- Inventory actions: einlagern, auslagern, and umlagern.
+- Pick-by-light behavior: all matching drawers light green, all others off.
