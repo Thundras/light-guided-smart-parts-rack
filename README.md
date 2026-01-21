@@ -21,6 +21,40 @@ inventory data and searching for parts.
 ## Data storage
 - Manage data without a database, potentially using JSON files.
 
+### Proposed JSON data structure
+```
+data/
+  master/            # Stammdaten
+  movements/         # Bewegungsdaten
+  indexes/           # optionale Such-/Lookup-Tabellen
+  schema/            # JSON-Schemas für die Datenformate
+```
+
+#### `data/master/` (Stammdaten)
+- `racks.json` – Racks inkl. WLED/ESP32-Instanz
+- `drawers.json` – Schubladen/Slots inkl. Pixelbereich
+- `parts.json` – Teile/Artikel
+- `categories.json` – Kategorien
+- `manufacturers.json` – Hersteller
+- `tags.json` – Tags/Schlagworte
+- `locations.json` – optionale Standort-Definitionen
+
+#### `data/movements/` (Bewegungsdaten)
+- `stock_movements_YYYYMM.json` – monatliche Bewegungsdateien
+- `adjustments_YYYYMM.json` – Inventur- und Korrekturbuchungen
+- `reservations.json` – Reservierungen
+
+#### `data/indexes/` (optional)
+- `parts_by_tag.json`
+- `parts_by_category.json`
+- `parts_by_drawer.json`
+
+#### `data/schema/` (JSON-Schemas)
+- `master/` für Stammdaten-Schemas
+- `movements/` für Bewegungsdaten-Schemas
+- `indexes/` für Index-Schemas
+- `schema-map.json` ordnet Daten-Dateien den passenden Schemas zu
+
 ## UI scope
 - Search criteria: name, category, manufacturer, drawer, and tags.
 - Maintenance: create, edit, delete, import/export, and notes/images.
