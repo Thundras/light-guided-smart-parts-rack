@@ -152,7 +152,7 @@ workflow:
     - "Never invent project scope or goals."
     - "Never add TODO/TBD placeholders to documentation."
     - "Always keep documentation in sync with changes."
-    - "When work items are completed, record them in README or PATCHNOTES and remove them from ROADMAP."
+    - "When work items are completed, record them in README or PATCHNOTES and mark them as done in ROADMAP (do not remove)."
     - "README and PATCHNOTES are append-only; do not edit or delete existing entries."
 
   default_steps_for_change:

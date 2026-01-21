@@ -2,8 +2,8 @@
 
 ## Milestone 1 — Planning and validation
 **Outcome:** Backend data access is stable, validated, and covered by baseline tests.
-**Milestone status:** ☐ Not started
-- ☐ Define a backend service layer around the JSON stores (CRUD for master, movement, and index data).
+**Milestone status:** ☐ In progress
+- ☑ Add backend service layer for CRUD access to JSON data stores.
 - ☐ Add JSON schema validation on read/write with clear error reporting.
 - ☐ Expand unit tests for validation failures and file-not-found scenarios.
 
