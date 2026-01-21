@@ -14,3 +14,5 @@
 - Add Python backend models and JSON storage for master data, plus unit tests.
 - Decide to implement the web UI in Python for backend consistency.
 - Add JSON stores and models for movement and index data files.
+- Add backend service layer for CRUD access to JSON data stores.
+- Add JSON schema validation for data store reads and writes with clear errors.
