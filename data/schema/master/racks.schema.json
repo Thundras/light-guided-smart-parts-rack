@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "racks.schema.json",
+  "title": "Racks",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["id", "name", "wledInstance", "rows", "drawersPerRow"],
+    "properties": {
+      "id": { "type": "string" },
+      "name": { "type": "string" },
+      "wledInstance": { "type": "string" },
+      "rows": { "type": "integer", "minimum": 1 },
+      "drawersPerRow": { "type": "integer", "minimum": 1 }
+    }
+  }
+}
