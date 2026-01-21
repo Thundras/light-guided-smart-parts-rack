@@ -24,25 +24,25 @@ inventory data and searching for parts.
 ### Proposed JSON data structure
 ```
 data/
-  master/            # Stammdaten
-  movements/         # Bewegungsdaten
-  indexes/           # optionale Such-/Lookup-Tabellen
-  schema/            # JSON-Schemas für die Datenformate
+  master/            # master data
+  movements/         # movement data
+  indexes/           # optional search/lookup tables
+  schema/            # JSON schemas for data formats
 ```
 
-#### `data/master/` (Stammdaten)
-- `racks.json` – Racks inkl. WLED/ESP32-Instanz
-- `drawers.json` – Schubladen/Slots inkl. Pixelbereich
-- `parts.json` – Teile/Artikel
-- `categories.json` – Kategorien
-- `manufacturers.json` – Hersteller
-- `tags.json` – Tags/Schlagworte
-- `locations.json` – optionale Standort-Definitionen
+#### `data/master/` (master data)
+- `racks.json` – racks including the WLED/ESP32 instance
+- `drawers.json` – drawers/slots including pixel ranges
+- `parts.json` – parts/items
+- `categories.json` – categories
+- `manufacturers.json` – manufacturers
+- `tags.json` – tags/keywords
+- `locations.json` – optional location definitions
 
-#### `data/movements/` (Bewegungsdaten)
-- `stock_movements_YYYYMM.json` – monatliche Bewegungsdateien
-- `adjustments_YYYYMM.json` – Inventur- und Korrekturbuchungen
-- `reservations.json` – Reservierungen
+#### `data/movements/` (movement data)
+- `stock_movements_YYYYMM.json` – monthly movement files
+- `adjustments_YYYYMM.json` – inventory and correction entries
+- `reservations.json` – reservations
 
 #### `data/indexes/` (optional)
 - `parts_by_tag.json`
@@ -50,10 +50,10 @@ data/
 - `parts_by_drawer.json`
 
 #### `data/schema/` (JSON-Schemas)
-- `master/` für Stammdaten-Schemas
-- `movements/` für Bewegungsdaten-Schemas
-- `indexes/` für Index-Schemas
-- `schema-map.json` ordnet Daten-Dateien den passenden Schemas zu
+- `master/` for master data schemas
+- `movements/` for movement data schemas
+- `indexes/` for index schemas
+- `schema-map.json` maps data files to the matching schemas
 
 ## UI scope
 - Search criteria: name, category, manufacturer, drawer, and tags.
@@ -61,5 +61,5 @@ data/
 
 ## User flows (single-user, minimal)
 - Add, edit, and search parts as the primary UI flows.
-- Inventory actions: einlagern, auslagern, and umlagern.
+- Inventory actions: stocking, picking, and relocating.
 - Pick-by-light behavior: all matching drawers light green, all others off.
