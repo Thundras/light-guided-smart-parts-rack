@@ -53,6 +53,7 @@ data/
 - `master/` für Stammdaten-Schemas
 - `movements/` für Bewegungsdaten-Schemas
 - `indexes/` für Index-Schemas
+- `schema-map.json` ordnet Daten-Dateien den passenden Schemas zu
 
 ## UI scope
 - Search criteria: name, category, manufacturer, drawer, and tags.

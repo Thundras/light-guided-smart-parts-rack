@@ -1,0 +1,21 @@
+{
+  "master": {
+    "racks.json": "master/racks.schema.json",
+    "drawers.json": "master/drawers.schema.json",
+    "parts.json": "master/parts.schema.json",
+    "categories.json": "master/categories.schema.json",
+    "manufacturers.json": "master/manufacturers.schema.json",
+    "tags.json": "master/tags.schema.json",
+    "locations.json": "master/locations.schema.json"
+  },
+  "movements": {
+    "stock_movements_YYYYMM.json": "movements/stock_movements.schema.json",
+    "adjustments_YYYYMM.json": "movements/adjustments.schema.json",
+    "reservations.json": "movements/reservations.schema.json"
+  },
+  "indexes": {
+    "parts_by_tag.json": "indexes/parts_by_tag.schema.json",
+    "parts_by_category.json": "indexes/parts_by_category.schema.json",
+    "parts_by_drawer.json": "indexes/parts_by_drawer.schema.json"
+  }
+}
