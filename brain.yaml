@@ -47,6 +47,11 @@ documentation:
   keep_up_to_date: true
   no_duplication_between_files: true
   tone: "technical"
+  roadmap_structure:
+    format: "milestone_based_with_tasks"
+    requirements:
+      - "Each milestone includes an outcome statement."
+      - "Include dependencies between milestones when applicable."
 
 documentation_rules:
   placeholders:
