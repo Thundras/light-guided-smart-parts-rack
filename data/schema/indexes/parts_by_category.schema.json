@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "parts_by_category.schema.json",
+  "title": "Parts By Category",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["categoryId", "partIds"],
+    "properties": {
+      "categoryId": { "type": "string" },
+      "partIds": {
+        "type": "array",
+        "items": { "type": "string" }
+      }
+    }
+  }
+}

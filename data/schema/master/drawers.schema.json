@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "drawers.schema.json",
+  "title": "Drawers",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["id", "rackId", "row", "col", "label", "pixelRange"],
+    "properties": {
+      "id": { "type": "string" },
+      "rackId": { "type": "string" },
+      "row": { "type": "integer", "minimum": 1 },
+      "col": { "type": "integer", "minimum": 1 },
+      "label": { "type": "string" },
+      "pixelRange": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["start", "count"],
+        "properties": {
+          "start": { "type": "integer", "minimum": 0 },
+          "count": { "type": "integer", "minimum": 1 }
+        }
+      }
+    }
+  }
+}

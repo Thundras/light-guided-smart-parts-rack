@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "parts.schema.json",
+  "title": "Parts",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["id", "name", "categoryId", "manufacturerId", "drawerId", "tags", "quantity"],
+    "properties": {
+      "id": { "type": "string" },
+      "name": { "type": "string" },
+      "categoryId": { "type": "string" },
+      "manufacturerId": { "type": "string" },
+      "drawerId": { "type": "string" },
+      "tags": {
+        "type": "array",
+        "items": { "type": "string" }
+      },
+      "quantity": { "type": "integer", "minimum": 0 },
+      "notes": { "type": "string" },
+      "images": {
+        "type": "array",
+        "items": { "type": "string" }
+      }
+    }
+  }
+}

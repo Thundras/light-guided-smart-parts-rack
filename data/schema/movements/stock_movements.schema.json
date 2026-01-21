@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "stock_movements.schema.json",
+  "title": "Stock Movements",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["id", "partId", "type", "qty", "timestamp"],
+    "properties": {
+      "id": { "type": "string" },
+      "partId": { "type": "string" },
+      "type": { "type": "string", "enum": ["in", "out"] },
+      "qty": { "type": "integer", "minimum": 1 },
+      "timestamp": { "type": "string", "format": "date-time" },
+      "note": { "type": "string" }
+    }
+  }
+}
