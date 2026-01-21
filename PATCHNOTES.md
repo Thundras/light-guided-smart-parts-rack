@@ -11,3 +11,6 @@
 - Removed planning bullets now covered by existing JSON definitions.
 - Capture single-user, minimal user-flow requirements in the roadmap.
 - Move clarified single-user flows and pick-by-light behavior into README.
+- Add Python backend models and JSON storage for master data, plus unit tests.
+- Decide to implement the web UI in Python for backend consistency.
+- Add JSON stores and models for movement and index data files.

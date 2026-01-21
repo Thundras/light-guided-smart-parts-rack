@@ -63,3 +63,11 @@ data/
 - Add, edit, and search parts as the primary UI flows.
 - Inventory actions: stocking, picking, and relocating.
 - Pick-by-light behavior: all matching drawers light green, all others off.
+
+## Backend data access (initial)
+- Python JSON storage layer for master data, matching the documented file layout.
+- Unit tests cover JSON load/save and optional fields for parts/drawers.
+
+## UI technology decision
+- The web UI will be implemented in Python rather than C# to keep the stack consistent with the JSON backend tooling.
+- Movement and index JSON files are supported for load/save operations, matching the schema layout.
