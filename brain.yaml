@@ -52,6 +52,8 @@ documentation:
     requirements:
       - "Each milestone includes an outcome statement."
       - "Include dependencies between milestones when applicable."
+      - "Each milestone includes a status marker (☐ Not started, ☐ In progress, or ☑ Done)."
+      - "Each task uses a checkbox marker (☐ or ☑) to track completion."
 
 documentation_rules:
   placeholders:
