@@ -15,3 +15,4 @@
 - Decide to implement the web UI in Python for backend consistency.
 - Add JSON stores and models for movement and index data files.
 - Add backend service layer for CRUD access to JSON data stores.
+- Add schema validation on JSON read/write with tests for invalid payloads.

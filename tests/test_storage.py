@@ -15,6 +15,7 @@ from backend.models import (
     Reservation,
     StockMovement,
 )
+from backend.schema import SchemaValidationError
 from backend.storage import JsonIndexDataStore, JsonMasterDataStore, JsonMovementDataStore
 
 
@@ -269,3 +270,47 @@ def test_load_and_save_indexes(temp_repo_root: Path) -> None:
     index_store.save_parts_by_tag([PartsByTag(tag_id="tag-2", part_ids=["part-5"])])
     saved_tags = json.loads(by_tag_path.read_text(encoding="utf-8"))
     assert saved_tags == [{"tagId": "tag-2", "partIds": ["part-5"]}]
+
+
+def test_load_missing_file_raises_file_not_found(temp_repo_root: Path) -> None:
+    store = JsonMasterDataStore(temp_repo_root)
+
+    with pytest.raises(FileNotFoundError):
+        store.load_racks()
+
+
+def test_load_invalid_payload_raises_schema_error(temp_repo_root: Path) -> None:
+    racks_path = temp_repo_root / "data" / "master" / "racks.json"
+    write_json(
+        racks_path,
+        [
+            {
+                "id": "rack-1",
+                "name": "Main Rack",
+                "rows": 2,
+                "drawersPerRow": 3,
+            }
+        ],
+    )
+    store = JsonMasterDataStore(temp_repo_root)
+
+    with pytest.raises(SchemaValidationError, match="wledInstance"):
+        store.load_racks()
+
+
+def test_save_invalid_payload_raises_schema_error(temp_repo_root: Path) -> None:
+    parts_path = temp_repo_root / "data" / "master" / "parts.json"
+    parts_path.write_text("[]", encoding="utf-8")
+    store = JsonMasterDataStore(temp_repo_root)
+    invalid_part = Part(  # type: ignore[arg-type]
+        id="part-1",
+        name="Resistor 1k",
+        category_id="cat-1",
+        manufacturer_id="mfg-1",
+        drawer_id="drawer-1",
+        tags=["resistor"],
+        quantity="bad",
+    )
+
+    with pytest.raises(SchemaValidationError, match="quantity"):
+        store.save_parts([invalid_part])
