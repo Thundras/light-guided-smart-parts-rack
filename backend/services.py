@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from typing import Callable, List, Sequence, TypeVar
 
 from .models import (
@@ -454,3 +455,54 @@ class IndexDataService:
             "Parts by drawer",
         )
         self._store.save_parts_by_drawer(entries)
+
+
+@dataclass(frozen=True)
+class PartSearchCriteria:
+    query: str | None = None
+    category_id: str | None = None
+    manufacturer_id: str | None = None
+    drawer_id: str | None = None
+    tags_any: Sequence[str] = field(default_factory=tuple)
+    tags_all: Sequence[str] = field(default_factory=tuple)
+    min_quantity: int | None = None
+    max_quantity: int | None = None
+
+
+class PartSearchService:
+    def __init__(self, store: JsonMasterDataStore) -> None:
+        self._store = store
+
+    def search_parts(self, criteria: PartSearchCriteria) -> List[Part]:
+        parts = self._store.load_parts()
+        return [part for part in parts if _matches_criteria(part, criteria)]
+
+
+def _matches_criteria(part: Part, criteria: PartSearchCriteria) -> bool:
+    if criteria.category_id and part.category_id != criteria.category_id:
+        return False
+    if criteria.manufacturer_id and part.manufacturer_id != criteria.manufacturer_id:
+        return False
+    if criteria.drawer_id and part.drawer_id != criteria.drawer_id:
+        return False
+    if criteria.min_quantity is not None and part.quantity < criteria.min_quantity:
+        return False
+    if criteria.max_quantity is not None and part.quantity > criteria.max_quantity:
+        return False
+    if criteria.tags_any:
+        if not set(criteria.tags_any).intersection(part.tags):
+            return False
+    if criteria.tags_all:
+        if not set(criteria.tags_all).issubset(part.tags):
+            return False
+    if criteria.query:
+        query = criteria.query.casefold()
+        haystack = [
+            part.id,
+            part.name,
+            part.notes or "",
+            " ".join(part.tags),
+        ]
+        if not any(query in text.casefold() for text in haystack):
+            return False
+    return True

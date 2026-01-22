@@ -154,6 +154,7 @@ workflow:
     - "Always keep documentation in sync with changes."
     - "When work items are completed, record them in README or PATCHNOTES and mark them as done in ROADMAP (do not remove)."
     - "When all tasks in a milestone are complete and the outcome is met, mark the milestone status as done."
+    - "After code changes, always review tests and add or update coverage as needed."
     - "README and PATCHNOTES are append-only; do not edit or delete existing entries."
 
   default_steps_for_change:
