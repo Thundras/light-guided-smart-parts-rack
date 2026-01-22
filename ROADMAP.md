@@ -10,9 +10,9 @@
 ## Milestone 2 — Core software foundation
 **Outcome:** A usable UI shell is available with core data operations wired end-to-end.
 **Depends on:** Milestone 1.
-**Milestone status:** ☐ Not started
-- ☐ Establish a minimal web UI skeleton in Python (navigation and inventory views).
-- ☐ Implement search and filtering APIs to support the UI.
+**Milestone status:** ☐ In progress
+- ☑ Establish a minimal web UI skeleton in Python (navigation and inventory views).
+- ☑ Implement search and filtering APIs to support the UI.
 - ☐ Add import/export maintenance flows for master data.
 
 ## Milestone 3 — Pick-by-light enablement
