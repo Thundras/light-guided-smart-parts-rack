@@ -15,3 +15,9 @@
 - Decide to implement the web UI in Python for backend consistency.
 - Add JSON stores and models for movement and index data files.
 - Add backend service layer for CRUD access to JSON data stores.
+- Add schema validation on JSON read/write with tests for invalid payloads.
+- Add a minimal Python web UI skeleton with navigation and inventory view.
+- Add part search and filtering service APIs with unit tests.
+- Fix UI routing to accept trailing slashes on inventory paths.
+- Normalize UI routes to handle index.html requests.
+- Normalize UI routes to ignore duplicate slashes and index suffixes.

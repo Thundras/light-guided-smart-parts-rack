@@ -71,3 +71,11 @@ data/
 ## UI technology decision
 - The web UI will be implemented in Python rather than C# to keep the stack consistent with the JSON backend tooling.
 - Movement and index JSON files are supported for load/save operations, matching the schema layout.
+
+## UI skeleton (Python)
+Run the minimal web UI locally with:
+```
+python -m backend.web
+```
+Navigate to `http://localhost:8000` for the home view and `http://localhost:8000/inventory`
+for the inventory table view.

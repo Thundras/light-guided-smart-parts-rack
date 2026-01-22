@@ -2,17 +2,17 @@
 
 ## Milestone 1 — Planning and validation
 **Outcome:** Backend data access is stable, validated, and covered by baseline tests.
-**Milestone status:** ☐ In progress
+**Milestone status:** ☑ Done
 - ☑ Add backend service layer for CRUD access to JSON data stores.
-- ☐ Add JSON schema validation on read/write with clear error reporting.
-- ☐ Expand unit tests for validation failures and file-not-found scenarios.
+- ☑ Add JSON schema validation on read/write with clear error reporting.
+- ☑ Expand unit tests for validation failures and file-not-found scenarios.
 
 ## Milestone 2 — Core software foundation
 **Outcome:** A usable UI shell is available with core data operations wired end-to-end.
 **Depends on:** Milestone 1.
-**Milestone status:** ☐ Not started
-- ☐ Establish a minimal web UI skeleton in Python (navigation and inventory views).
-- ☐ Implement search and filtering APIs to support the UI.
+**Milestone status:** ☐ In progress
+- ☑ Establish a minimal web UI skeleton in Python (navigation and inventory views).
+- ☑ Implement search and filtering APIs to support the UI.
 - ☐ Add import/export maintenance flows for master data.
 
 ## Milestone 3 — Pick-by-light enablement
