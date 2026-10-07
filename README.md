@@ -2,12 +2,14 @@
 
 A smart small-parts storage rack for private use that uses pick-by-light
 indicators to locate items quickly. The hardware uses WS2812B LEDs driven by
-an ESP32 running WLED. The software includes a C#-based web UI for maintaining
-inventory data and searching for parts.
+an ESP32 running WLED. The software includes a Python-based web UI for
+maintaining inventory data and searching for parts (see
+[`docs/decisions.md`](docs/decisions.md) for why Python was chosen over the
+originally planned C#).
 
 ## Core components
 - **Lighting control:** WS2812B addressable LEDs via ESP32 with WLED.
-- **Inventory management UI:** C# web UI for part maintenance and search.
+- **Inventory management UI:** Python web UI for part maintenance and search.
 - **Physical storage:** Modular rack with labeled compartments mapped to LEDs.
 
 ## Configuration needs
