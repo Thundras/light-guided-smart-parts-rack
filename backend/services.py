@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Callable, List, Sequence, TypeVar
+from typing import Callable, Generic, List, Sequence, TypeVar
 
 from .models import (
     Adjustment,
@@ -66,179 +66,168 @@ def _delete_by_id(items: Sequence[T], item_id: str, key: Callable[[T], str], lab
     return result
 
 
+class CrudService(Generic[T]):
+    """Generic id-keyed CRUD over a load/save pair. Used wherever an entity type has a plain
+    list-of-records JSON store with a single id field — covers all seven master data entities
+    identically, so each one just supplies its own load/save/key instead of repeating the CRUD
+    logic."""
+
+    def __init__(
+        self,
+        load: Callable[[], List[T]],
+        save: Callable[[Sequence[T]], None],
+        key: Callable[[T], str],
+        label: str,
+    ) -> None:
+        self._load = load
+        self._save = save
+        self._key = key
+        self._label = label
+
+    def list(self) -> List[T]:
+        return self._load()
+
+    def get(self, item_id: str) -> T:
+        return _get_by_id(self._load(), item_id, self._key, self._label)
+
+    def create(self, item: T) -> None:
+        items = self._load()
+        _ensure_absent(items, self._key(item), self._key, self._label)
+        items.append(item)
+        self._save(items)
+
+    def update(self, item: T) -> None:
+        items = _replace_by_id(self._load(), item, self._key, self._label)
+        self._save(items)
+
+    def delete(self, item_id: str) -> None:
+        items = _delete_by_id(self._load(), item_id, self._key, self._label)
+        self._save(items)
+
+
 class MasterDataService:
     def __init__(self, store: JsonMasterDataStore) -> None:
         self._store = store
+        self._racks = CrudService(store.load_racks, store.save_racks, lambda x: x.id, "Rack")
+        self._drawers = CrudService(
+            store.load_drawers, store.save_drawers, lambda x: x.id, "Drawer"
+        )
+        self._parts = CrudService(store.load_parts, store.save_parts, lambda x: x.id, "Part")
+        self._categories = CrudService(
+            store.load_categories, store.save_categories, lambda x: x.id, "Category"
+        )
+        self._manufacturers = CrudService(
+            store.load_manufacturers, store.save_manufacturers, lambda x: x.id, "Manufacturer"
+        )
+        self._tags = CrudService(store.load_tags, store.save_tags, lambda x: x.id, "Tag")
+        self._locations = CrudService(
+            store.load_locations, store.save_locations, lambda x: x.id, "Location"
+        )
 
     def list_racks(self) -> List[Rack]:
-        return self._store.load_racks()
+        return self._racks.list()
 
     def get_rack(self, rack_id: str) -> Rack:
-        return _get_by_id(self._store.load_racks(), rack_id, lambda rack: rack.id, "Rack")
+        return self._racks.get(rack_id)
 
     def create_rack(self, rack: Rack) -> None:
-        racks = self._store.load_racks()
-        _ensure_absent(racks, rack.id, lambda item: item.id, "Rack")
-        racks.append(rack)
-        self._store.save_racks(racks)
+        self._racks.create(rack)
 
     def update_rack(self, rack: Rack) -> None:
-        racks = _replace_by_id(self._store.load_racks(), rack, lambda item: item.id, "Rack")
-        self._store.save_racks(racks)
+        self._racks.update(rack)
 
     def delete_rack(self, rack_id: str) -> None:
-        racks = _delete_by_id(self._store.load_racks(), rack_id, lambda item: item.id, "Rack")
-        self._store.save_racks(racks)
+        self._racks.delete(rack_id)
 
     def list_drawers(self) -> List[Drawer]:
-        return self._store.load_drawers()
+        return self._drawers.list()
 
     def get_drawer(self, drawer_id: str) -> Drawer:
-        return _get_by_id(
-            self._store.load_drawers(), drawer_id, lambda drawer: drawer.id, "Drawer"
-        )
+        return self._drawers.get(drawer_id)
 
     def create_drawer(self, drawer: Drawer) -> None:
-        drawers = self._store.load_drawers()
-        _ensure_absent(drawers, drawer.id, lambda item: item.id, "Drawer")
-        drawers.append(drawer)
-        self._store.save_drawers(drawers)
+        self._drawers.create(drawer)
 
     def update_drawer(self, drawer: Drawer) -> None:
-        drawers = _replace_by_id(
-            self._store.load_drawers(), drawer, lambda item: item.id, "Drawer"
-        )
-        self._store.save_drawers(drawers)
+        self._drawers.update(drawer)
 
     def delete_drawer(self, drawer_id: str) -> None:
-        drawers = _delete_by_id(
-            self._store.load_drawers(), drawer_id, lambda item: item.id, "Drawer"
-        )
-        self._store.save_drawers(drawers)
+        self._drawers.delete(drawer_id)
 
     def list_parts(self) -> List[Part]:
-        return self._store.load_parts()
+        return self._parts.list()
 
     def get_part(self, part_id: str) -> Part:
-        return _get_by_id(self._store.load_parts(), part_id, lambda part: part.id, "Part")
+        return self._parts.get(part_id)
 
     def create_part(self, part: Part) -> None:
-        parts = self._store.load_parts()
-        _ensure_absent(parts, part.id, lambda item: item.id, "Part")
-        parts.append(part)
-        self._store.save_parts(parts)
+        self._parts.create(part)
 
     def update_part(self, part: Part) -> None:
-        parts = _replace_by_id(self._store.load_parts(), part, lambda item: item.id, "Part")
-        self._store.save_parts(parts)
+        self._parts.update(part)
 
     def delete_part(self, part_id: str) -> None:
-        parts = _delete_by_id(self._store.load_parts(), part_id, lambda item: item.id, "Part")
-        self._store.save_parts(parts)
+        self._parts.delete(part_id)
 
     def list_categories(self) -> List[Category]:
-        return self._store.load_categories()
+        return self._categories.list()
 
     def get_category(self, category_id: str) -> Category:
-        return _get_by_id(
-            self._store.load_categories(), category_id, lambda item: item.id, "Category"
-        )
+        return self._categories.get(category_id)
 
     def create_category(self, category: Category) -> None:
-        categories = self._store.load_categories()
-        _ensure_absent(categories, category.id, lambda item: item.id, "Category")
-        categories.append(category)
-        self._store.save_categories(categories)
+        self._categories.create(category)
 
     def update_category(self, category: Category) -> None:
-        categories = _replace_by_id(
-            self._store.load_categories(), category, lambda item: item.id, "Category"
-        )
-        self._store.save_categories(categories)
+        self._categories.update(category)
 
     def delete_category(self, category_id: str) -> None:
-        categories = _delete_by_id(
-            self._store.load_categories(), category_id, lambda item: item.id, "Category"
-        )
-        self._store.save_categories(categories)
+        self._categories.delete(category_id)
 
     def list_manufacturers(self) -> List[Manufacturer]:
-        return self._store.load_manufacturers()
+        return self._manufacturers.list()
 
     def get_manufacturer(self, manufacturer_id: str) -> Manufacturer:
-        return _get_by_id(
-            self._store.load_manufacturers(), manufacturer_id, lambda item: item.id, "Manufacturer"
-        )
+        return self._manufacturers.get(manufacturer_id)
 
     def create_manufacturer(self, manufacturer: Manufacturer) -> None:
-        manufacturers = self._store.load_manufacturers()
-        _ensure_absent(manufacturers, manufacturer.id, lambda item: item.id, "Manufacturer")
-        manufacturers.append(manufacturer)
-        self._store.save_manufacturers(manufacturers)
+        self._manufacturers.create(manufacturer)
 
     def update_manufacturer(self, manufacturer: Manufacturer) -> None:
-        manufacturers = _replace_by_id(
-            self._store.load_manufacturers(),
-            manufacturer,
-            lambda item: item.id,
-            "Manufacturer",
-        )
-        self._store.save_manufacturers(manufacturers)
+        self._manufacturers.update(manufacturer)
 
     def delete_manufacturer(self, manufacturer_id: str) -> None:
-        manufacturers = _delete_by_id(
-            self._store.load_manufacturers(),
-            manufacturer_id,
-            lambda item: item.id,
-            "Manufacturer",
-        )
-        self._store.save_manufacturers(manufacturers)
+        self._manufacturers.delete(manufacturer_id)
 
     def list_tags(self) -> List[Tag]:
-        return self._store.load_tags()
+        return self._tags.list()
 
     def get_tag(self, tag_id: str) -> Tag:
-        return _get_by_id(self._store.load_tags(), tag_id, lambda item: item.id, "Tag")
+        return self._tags.get(tag_id)
 
     def create_tag(self, tag: Tag) -> None:
-        tags = self._store.load_tags()
-        _ensure_absent(tags, tag.id, lambda item: item.id, "Tag")
-        tags.append(tag)
-        self._store.save_tags(tags)
+        self._tags.create(tag)
 
     def update_tag(self, tag: Tag) -> None:
-        tags = _replace_by_id(self._store.load_tags(), tag, lambda item: item.id, "Tag")
-        self._store.save_tags(tags)
+        self._tags.update(tag)
 
     def delete_tag(self, tag_id: str) -> None:
-        tags = _delete_by_id(self._store.load_tags(), tag_id, lambda item: item.id, "Tag")
-        self._store.save_tags(tags)
+        self._tags.delete(tag_id)
 
     def list_locations(self) -> List[Location]:
-        return self._store.load_locations()
+        return self._locations.list()
 
     def get_location(self, location_id: str) -> Location:
-        return _get_by_id(
-            self._store.load_locations(), location_id, lambda item: item.id, "Location"
-        )
+        return self._locations.get(location_id)
 
     def create_location(self, location: Location) -> None:
-        locations = self._store.load_locations()
-        _ensure_absent(locations, location.id, lambda item: item.id, "Location")
-        locations.append(location)
-        self._store.save_locations(locations)
+        self._locations.create(location)
 
     def update_location(self, location: Location) -> None:
-        locations = _replace_by_id(
-            self._store.load_locations(), location, lambda item: item.id, "Location"
-        )
-        self._store.save_locations(locations)
+        self._locations.update(location)
 
     def delete_location(self, location_id: str) -> None:
-        locations = _delete_by_id(
-            self._store.load_locations(), location_id, lambda item: item.id, "Location"
-        )
-        self._store.save_locations(locations)
+        self._locations.delete(location_id)
 
 
 class MovementDataService:

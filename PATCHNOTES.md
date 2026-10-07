@@ -1,6 +1,12 @@
 # Patch Notes
 
 ## Unreleased
+- Replace `brain.yaml` (Codex-era governance) with `CLAUDE.md`; same documentation discipline,
+  consolidated into one file.
+- Fix README intro still describing the web UI as C#-based after the Python decision.
+- Refactor `MasterDataService`: extract the repeated per-entity CRUD logic (list/get/create/
+  update/delete for racks, drawers, parts, categories, manufacturers, tags, locations) into a
+  single generic `CrudService`. Public API unchanged, all tests pass unmodified.
 - Documented generic rack layouts, multi-ESP32 support, and UI scope.
 - Document proposed JSON file structure for master and movement data.
 - Add empty JSON data files for the proposed structure.
