@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Callable, Generic, List, Sequence, TypeVar
+from typing import Any, Callable, Dict, Generic, List, Mapping, Sequence, TypeVar
 
 from .models import (
     Adjustment,
@@ -228,6 +228,77 @@ class MasterDataService:
 
     def delete_location(self, location_id: str) -> None:
         self._locations.delete(location_id)
+
+    def export_all(self) -> Dict[str, List[Dict[str, Any]]]:
+        """Serialize every master data entity to plain dicts, keyed by entity name — the
+        inverse of import_all, used for the maintenance export/backup flow."""
+        return {
+            "racks": [item.to_dict() for item in self.list_racks()],
+            "drawers": [item.to_dict() for item in self.list_drawers()],
+            "parts": [item.to_dict() for item in self.list_parts()],
+            "categories": [item.to_dict() for item in self.list_categories()],
+            "manufacturers": [item.to_dict() for item in self.list_manufacturers()],
+            "tags": [item.to_dict() for item in self.list_tags()],
+            "locations": [item.to_dict() for item in self.list_locations()],
+        }
+
+    def import_all(self, payload: Mapping[str, Any]) -> None:
+        """Replace the master data entities present in `payload` (each a list of dicts, in the
+        same shape export_all produces) with the given records — a full replace per entity, not
+        a merge, matching the "edit the export offline, re-upload it" maintenance workflow.
+        Entities not present in `payload` are left untouched.
+
+        Validates and parses every entity first; if anything is invalid, nothing is written —
+        raises ImportValidationError listing every problem found, not just the first one.
+        """
+        specs: Dict[str, tuple] = {
+            "racks": (Rack.from_dict, self._store.save_racks),
+            "drawers": (Drawer.from_dict, self._store.save_drawers),
+            "parts": (Part.from_dict, self._store.save_parts),
+            "categories": (Category.from_dict, self._store.save_categories),
+            "manufacturers": (Manufacturer.from_dict, self._store.save_manufacturers),
+            "tags": (Tag.from_dict, self._store.save_tags),
+            "locations": (Location.from_dict, self._store.save_locations),
+        }
+
+        errors: List[str] = []
+        parsed_by_key: Dict[str, List[Any]] = {}
+
+        for key, items in payload.items():
+            if key not in specs:
+                errors.append(f"Unknown entity type '{key}'")
+                continue
+            if not isinstance(items, list):
+                errors.append(f"'{key}' must be a list, got {type(items).__name__}")
+                continue
+
+            from_dict, _save = specs[key]
+            parsed: List[Any] = []
+            key_ok = True
+            for index, raw in enumerate(items):
+                try:
+                    parsed.append(from_dict(raw))
+                except (KeyError, ValueError, TypeError) as exc:
+                    errors.append(f"{key}[{index}]: {exc}")
+                    key_ok = False
+            if key_ok:
+                parsed_by_key[key] = parsed
+
+        if errors:
+            raise ImportValidationError(errors)
+
+        for key, items in parsed_by_key.items():
+            _from_dict, save = specs[key]
+            save(items)
+
+
+class ImportValidationError(ValueError):
+    """Raised by MasterDataService.import_all when the payload is invalid. Carries every problem
+    found (not just the first), so a caller can show the user a complete list to fix at once."""
+
+    def __init__(self, errors: List[str]) -> None:
+        super().__init__("; ".join(errors))
+        self.errors = errors
 
 
 class MovementDataService:

@@ -1,5 +1,16 @@
+import json
+import threading
+import urllib.parse
+import urllib.request
+from contextlib import contextmanager
+from http.server import HTTPServer
+from pathlib import Path
+from typing import Iterator
+
+import pytest
+
 from backend.models import Part
-from backend.web import _normalize_path, _render_home, _render_inventory
+from backend.web import WebUIRequestHandler, _normalize_path, _render_home, _render_inventory
 
 
 def test_render_home_includes_navigation_message() -> None:
@@ -55,3 +66,107 @@ def test_normalize_path_handles_extra_slashes_and_index_suffix() -> None:
     assert _normalize_path("//inventory//") == "/inventory"
     assert _normalize_path("/inventory/index.html/") == "/inventory"
     assert _normalize_path("/index.html/") == "/"
+
+
+@contextmanager
+def _running_server(repo_root: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[str]:
+    """Spins up the real WebUIRequestHandler on a background thread, pointed at `repo_root`
+    via the SMART_RACK_REPO_ROOT override, so export/import can be exercised as real HTTP
+    requests (body parsing, file writes) rather than just the pure render functions above."""
+    monkeypatch.setenv("SMART_RACK_REPO_ROOT", str(repo_root))
+    server = HTTPServer(("127.0.0.1", 0), WebUIRequestHandler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        yield f"http://127.0.0.1:{server.server_address[1]}"
+    finally:
+        server.shutdown()
+        thread.join()
+
+
+def _build_master_data_dir(tmp_path: Path) -> Path:
+    master_dir = tmp_path / "data" / "master"
+    master_dir.mkdir(parents=True)
+    for name in (
+        "racks",
+        "drawers",
+        "parts",
+        "categories",
+        "manufacturers",
+        "tags",
+        "locations",
+    ):
+        (master_dir / f"{name}.json").write_text("[]", encoding="utf-8")
+    return master_dir
+
+
+def test_export_route_returns_master_data_as_json(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    master_dir = _build_master_data_dir(tmp_path)
+    (master_dir / "racks.json").write_text(
+        json.dumps(
+            [{"id": "rack-1", "name": "Main", "wledInstance": "wled-main", "rows": 1, "drawersPerRow": 1}]
+        ),
+        encoding="utf-8",
+    )
+
+    with _running_server(tmp_path, monkeypatch) as base_url:
+        with urllib.request.urlopen(f"{base_url}/export") as response:
+            assert response.headers["Content-Type"] == "application/json; charset=utf-8"
+            payload = json.loads(response.read())
+
+    assert payload["racks"][0]["id"] == "rack-1"
+    assert payload["parts"] == []
+
+
+def test_import_route_round_trip_via_export(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _build_master_data_dir(tmp_path)
+
+    import_payload = {
+        "racks": [
+            {
+                "id": "rack-1",
+                "name": "Main",
+                "wledInstance": "wled-main",
+                "rows": 1,
+                "drawersPerRow": 1,
+            }
+        ]
+    }
+
+    with _running_server(tmp_path, monkeypatch) as base_url:
+        body = urllib.parse.urlencode({"payload": json.dumps(import_payload)}).encode("utf-8")
+        request = urllib.request.Request(f"{base_url}/import", data=body, method="POST")
+        with urllib.request.urlopen(request) as response:
+            assert response.status == 200
+            assert "Import successful" in response.read().decode("utf-8")
+
+        with urllib.request.urlopen(f"{base_url}/export") as response:
+            exported = json.loads(response.read())
+
+    assert exported["racks"] == import_payload["racks"]
+
+
+def test_import_route_rejects_invalid_payload_and_shows_errors(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _build_master_data_dir(tmp_path)
+
+    with _running_server(tmp_path, monkeypatch) as base_url:
+        body = urllib.parse.urlencode(
+            {"payload": json.dumps({"racks": [{"id": "rack-1"}]})}
+        ).encode("utf-8")
+        request = urllib.request.Request(f"{base_url}/import", data=body, method="POST")
+        with urllib.request.urlopen(request) as response:
+            html = response.read().decode("utf-8")
+            assert "Import failed" in html
+            assert "racks[0]" in html
+
+        with urllib.request.urlopen(f"{base_url}/export") as response:
+            exported = json.loads(response.read())
+
+    # nothing was written since the payload was invalid
+    assert exported["racks"] == []

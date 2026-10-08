@@ -8,7 +8,14 @@ from backend.models import (
     Reservation,
     StockMovement,
 )
-from backend.services import IndexDataService, MasterDataService, MovementDataService
+import pytest
+
+from backend.services import (
+    ImportValidationError,
+    IndexDataService,
+    MasterDataService,
+    MovementDataService,
+)
 from backend.storage import JsonIndexDataStore, JsonMasterDataStore, JsonMovementDataStore
 
 
@@ -61,6 +68,89 @@ def test_master_data_service_crud(tmp_path: Path) -> None:
     assert service.get_rack("rack-1").name == "Updated"
 
     service.delete_rack("rack-1")
+    assert json.loads(racks_path.read_text(encoding="utf-8")) == []
+
+
+def test_master_data_export_import_round_trip(tmp_path: Path) -> None:
+    repo_root = build_repo_root(tmp_path)
+    racks_path = repo_root / "data" / "master" / "racks.json"
+    categories_path = repo_root / "data" / "master" / "categories.json"
+    for name in (
+        "racks",
+        "drawers",
+        "parts",
+        "categories",
+        "manufacturers",
+        "tags",
+        "locations",
+    ):
+        write_json(repo_root / "data" / "master" / f"{name}.json", [])
+
+    service = MasterDataService(JsonMasterDataStore(repo_root))
+    service.create_rack(
+        Rack(id="rack-1", name="Main Rack", wled_instance="wled-main", rows=2, drawers_per_row=3)
+    )
+
+    exported = service.export_all()
+    assert exported["racks"] == [
+        {
+            "id": "rack-1",
+            "name": "Main Rack",
+            "wledInstance": "wled-main",
+            "rows": 2,
+            "drawersPerRow": 3,
+        }
+    ]
+    assert exported["categories"] == []
+
+    # Re-import: racks replaced with a different record, categories untouched (not in payload).
+    service.import_all(
+        {
+            "racks": [
+                {
+                    "id": "rack-2",
+                    "name": "Second Rack",
+                    "wledInstance": "wled-second",
+                    "rows": 1,
+                    "drawersPerRow": 1,
+                }
+            ]
+        }
+    )
+
+    assert [r.id for r in service.list_racks()] == ["rack-2"]
+    assert json.loads(racks_path.read_text(encoding="utf-8")) == [
+        {
+            "id": "rack-2",
+            "name": "Second Rack",
+            "wledInstance": "wled-second",
+            "rows": 1,
+            "drawersPerRow": 1,
+        }
+    ]
+    # categories.json untouched since "categories" wasn't in the import payload.
+    assert json.loads(categories_path.read_text(encoding="utf-8")) == []
+
+
+def test_master_data_import_rejects_invalid_payload_without_writing(tmp_path: Path) -> None:
+    repo_root = build_repo_root(tmp_path)
+    racks_path = repo_root / "data" / "master" / "racks.json"
+    write_json(racks_path, [])
+    write_json(repo_root / "data" / "master" / "categories.json", [])
+
+    service = MasterDataService(JsonMasterDataStore(repo_root))
+
+    with pytest.raises(ImportValidationError) as exc_info:
+        service.import_all(
+            {
+                "racks": [{"id": "rack-1"}],  # missing required fields
+                "categories": "not-a-list",
+            }
+        )
+
+    assert "racks[0]" in str(exc_info.value)
+    assert "categories" in str(exc_info.value)
+    # Nothing written: racks.json still empty, invalid "categories" key never touched the file.
     assert json.loads(racks_path.read_text(encoding="utf-8")) == []
 
 

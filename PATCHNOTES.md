@@ -7,6 +7,11 @@
 - Refactor `MasterDataService`: extract the repeated per-entity CRUD logic (list/get/create/
   update/delete for racks, drawers, parts, categories, manufacturers, tags, locations) into a
   single generic `CrudService`. Public API unchanged, all tests pass unmodified.
+- Add import/export maintenance flows for master data (Milestone 2, now complete): `GET /export`
+  downloads all master data as JSON; `GET /import` shows a paste-JSON form, `POST /import`
+  validates and replaces only the entity types present in the payload — nothing is written if any
+  part of the payload is invalid, and the error list shows every problem found, not just the
+  first.
 - Documented generic rack layouts, multi-ESP32 support, and UI scope.
 - Document proposed JSON file structure for master and movement data.
 - Add empty JSON data files for the proposed structure.
