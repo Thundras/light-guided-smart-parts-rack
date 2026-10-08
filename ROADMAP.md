@@ -18,9 +18,14 @@
 ## Milestone 3 — Pick-by-light enablement
 **Outcome:** Hardware control is integrated and configurable for multiple racks.
 **Depends on:** Milestone 2.
-**Milestone status:** ☐ Not started
-- ☐ Add WLED control integration for pick-by-light workflows.
-- ☐ Support multiple ESP32 targets with configurable rack mappings.
+**Milestone status:** ☐ In progress
+- ☑ Build the pick-by-light logic and a WLED controller interface (`WledController`), with a
+  `MockWledController` and a `/simulate` web view so the feature is usable and demoable without
+  any physical ESP32/WLED hardware. Already routes per-rack to the correct `wled_instance`, so
+  multiple simultaneous racks/targets work in the simulation.
+- ☐ Add the real WLED control integration (`HttpWledController`, calling WLED's JSON HTTP API) —
+  blocked on hardware actually existing.
+- ☐ Verify multiple ESP32 targets against real hardware.
 
 ## Milestone 4 — Usability and scale
 **Outcome:** System is optimized for larger datasets and richer metadata management.

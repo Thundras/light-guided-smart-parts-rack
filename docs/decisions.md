@@ -68,3 +68,28 @@ imported record's id already exists with different field values?) that a merge a
 to define. Validating everything before writing anything, with a complete error list rather than
 fail-fast on the first bad record, matches the "clear error reporting" outcome already stated for
 Milestone 1's schema validation work and avoids partial, half-imported state.
+
+## 2026-10-08: Simulated pick-by-light before any hardware exists
+
+### Context
+Milestone 3 (pick-by-light) needs WLED/ESP32 hardware to fully verify, and none exists yet (the
+user explicitly wants the software built hardware-first, hardware added later). Building the
+pick-by-light logic directly against a real `HttpWledController` would mean it can't be built,
+tested, or demonstrated at all until a device is bought and flashed.
+
+### Decision
+Define a `WledController` interface (`backend/lighting.py`) with one real responsibility — set a
+color on a given WLED instance's pixel range — and build `PickByLightService` against that
+interface, not a concrete implementation. Ship a `MockWledController` that records calls instead
+of making network requests, plus a `/simulate` web view that renders each rack as a drawer grid
+colored from the mock's recorded state. `HttpWledController` (the real WLED JSON HTTP API client)
+is deliberately not built yet.
+
+### Reasoning
+This mirrors the mock/real hardware-abstraction pattern already used successfully in the
+`Freenove_Robot_New` project's `sal/` layer — hardware-dependent logic gets built and tested
+against a software stand-in, with the real driver swapped in later as an isolated, additive
+change once hardware exists, rather than letting the whole feature block on hardware availability.
+The visual `/simulate` view (not just unit-test assertions on the mock's recorded state) was
+specifically requested, so the feature is genuinely demoable — seeing the rack light up on screen
+— rather than only verifiable by reading test code.

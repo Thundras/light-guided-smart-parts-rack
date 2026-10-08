@@ -12,6 +12,10 @@
   validates and replaces only the entity types present in the payload — nothing is written if any
   part of the payload is invalid, and the error list shows every problem found, not just the
   first.
+- Add pick-by-light logic (`backend/lighting.py`: `WledController`, `MockWledController`,
+  `PickByLightService`) and a `/simulate` web view that highlights matching drawers green on a
+  visual rack grid — usable and demoable with no physical ESP32/WLED hardware. Real hardware
+  control (`HttpWledController`) is deferred until hardware exists; see `docs/decisions.md`.
 - Documented generic rack layouts, multi-ESP32 support, and UI scope.
 - Document proposed JSON file structure for master and movement data.
 - Add empty JSON data files for the proposed structure.

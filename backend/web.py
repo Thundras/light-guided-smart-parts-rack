@@ -8,9 +8,22 @@ from pathlib import Path
 from typing import Iterable
 from urllib.parse import parse_qs, urlparse
 
+from .lighting import MockWledController, PickByLightService
 from .schema import SchemaValidationError
-from .services import ImportValidationError, MasterDataService
+from .services import ImportValidationError, MasterDataService, PartSearchCriteria, PartSearchService
 from .storage import JsonMasterDataStore
+
+# One simulated WLED controller per server process, so repeated /simulate requests (and the
+# search form on that page) accumulate against the same simulated rack state instead of each
+# request starting from a blank slate — matches what a real, persistent WLED device would do.
+_simulated_controller = MockWledController()
+
+
+def reset_simulated_controller() -> None:
+    """Replace the module-level simulated controller with a fresh one. Exists so tests can
+    isolate /simulate's otherwise-process-wide state between test cases."""
+    global _simulated_controller
+    _simulated_controller = MockWledController()
 
 
 def _render_layout(title: str, body: str) -> str:
@@ -26,6 +39,13 @@ def _render_layout(title: str, body: str) -> str:
       table {{ border-collapse: collapse; width: 100%; }}
       th, td {{ border: 1px solid #ddd; padding: 0.5rem; text-align: left; }}
       .message {{ background: #f7f7f7; padding: 0.75rem; border-radius: 4px; }}
+      .rack {{ margin-bottom: 2rem; }}
+      .rack-grid {{ border-collapse: collapse; width: auto; }}
+      .rack-grid td {{
+        width: 4.5rem; height: 2.5rem; text-align: center; vertical-align: middle;
+        font-size: 0.8rem; color: #fff; text-shadow: 0 0 2px #000;
+      }}
+      .rack-grid td.empty {{ background: transparent; border: none; }}
     </style>
   </head>
   <body>
@@ -36,6 +56,7 @@ def _render_layout(title: str, body: str) -> str:
         <a href="/inventory">Inventory</a>
         <a href="/export">Export</a>
         <a href="/import">Import</a>
+        <a href="/simulate">Simulate</a>
       </nav>
     </header>
     {body}
@@ -98,6 +119,50 @@ def _render_import_form(message: str | None = None, errors: Iterable[str] = ()) 
     return _render_layout("Import", body)
 
 
+def _render_simulate(master: MasterDataService, controller: MockWledController, query: str) -> str:
+    """Pick-by-light simulation: runs a search against the query, highlights matching drawers
+    green on the shared simulated controller, and renders each configured rack as a grid of
+    drawers colored by the controller's current (post-search) state. Lets the pick-by-light
+    behavior be seen and demoed without any real WLED/ESP32 hardware."""
+    racks = master.list_racks()
+    drawers_by_rack: dict[str, list] = {rack.id: [] for rack in racks}
+    for drawer in master.list_drawers():
+        drawers_by_rack.setdefault(drawer.rack_id, []).append(drawer)
+
+    search_form = f"""
+    <form method="get" action="/simulate">
+      <input type="text" name="q" value="{_escape(query)}" placeholder="Search parts..." />
+      <button type="submit">Highlight</button>
+    </form>
+    """
+
+    if not racks:
+        return _render_layout("Simulate", search_form + '<p class="message">No racks configured yet.</p>')
+
+    racks_html = []
+    for rack in racks:
+        by_position = {(d.row, d.col): d for d in drawers_by_rack.get(rack.id, [])}
+        rows_html = []
+        for row in range(rack.rows):
+            cells = []
+            for col in range(rack.drawers_per_row):
+                drawer = by_position.get((row, col))
+                if drawer is None:
+                    cells.append('<td class="empty"></td>')
+                    continue
+                r, g, b = controller.color_for(rack.wled_instance, drawer.pixel_range)
+                cells.append(
+                    f'<td style="background: rgb({r},{g},{b})">{_escape(drawer.label)}</td>'
+                )
+            rows_html.append("<tr>" + "".join(cells) + "</tr>")
+        racks_html.append(
+            f'<div class="rack"><h2>{_escape(rack.name)}</h2>'
+            f'<table class="rack-grid">{"".join(rows_html)}</table></div>'
+        )
+
+    return _render_layout("Simulate", search_form + "".join(racks_html))
+
+
 def _escape(text: str) -> str:
     return (
         text.replace("&", "&amp;")
@@ -121,6 +186,9 @@ class WebUIRequestHandler(BaseHTTPRequestHandler):
             return
         if path == "/import":
             self._send_html(_render_import_form())
+            return
+        if path == "/simulate":
+            self._send_html(self._simulate_page())
             return
         self.send_error(HTTPStatus.NOT_FOUND, "Not Found")
 
@@ -175,6 +243,23 @@ class WebUIRequestHandler(BaseHTTPRequestHandler):
 
     def log_message(self, format: str, *args: object) -> None:
         return
+
+    def _simulate_page(self) -> str:
+        query_params = parse_qs(urlparse(self.path).query)
+        query = query_params.get("q", [""])[0]
+
+        store = JsonMasterDataStore(_repo_root())
+        master = MasterDataService(store)
+        # Always run highlight_parts, even with an empty query (-> no matches, not "match
+        # everything" — PartSearchCriteria with no query would match all parts, which is right
+        # for a real search but wrong as this page's empty/cleared state): it explicitly turns
+        # every drawer off, not just the ones that matched last time, so clearing the search box
+        # actually clears the simulated rack instead of leaving a stale highlight.
+        matches = (
+            PartSearchService(store).search_parts(PartSearchCriteria(query=query)) if query else []
+        )
+        PickByLightService(master, _simulated_controller).highlight_parts(matches)
+        return _render_simulate(master, _simulated_controller, query)
 
     def _inventory_page(self) -> str:
         store = JsonMasterDataStore(_repo_root())

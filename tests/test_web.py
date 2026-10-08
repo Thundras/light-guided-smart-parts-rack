@@ -9,6 +9,7 @@ from typing import Iterator
 
 import pytest
 
+from backend import web
 from backend.models import Part
 from backend.web import WebUIRequestHandler, _normalize_path, _render_home, _render_inventory
 
@@ -74,6 +75,7 @@ def _running_server(repo_root: Path, monkeypatch: pytest.MonkeyPatch) -> Iterato
     via the SMART_RACK_REPO_ROOT override, so export/import can be exercised as real HTTP
     requests (body parsing, file writes) rather than just the pure render functions above."""
     monkeypatch.setenv("SMART_RACK_REPO_ROOT", str(repo_root))
+    web.reset_simulated_controller()
     server = HTTPServer(("127.0.0.1", 0), WebUIRequestHandler)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
@@ -170,3 +172,83 @@ def test_import_route_rejects_invalid_payload_and_shows_errors(
 
     # nothing was written since the payload was invalid
     assert exported["racks"] == []
+
+
+def _write_simulate_fixture(tmp_path: Path) -> None:
+    master_dir = _build_master_data_dir(tmp_path)
+    (master_dir / "racks.json").write_text(
+        json.dumps(
+            [{"id": "rack-1", "name": "Main", "wledInstance": "wled-main", "rows": 1, "drawersPerRow": 2}]
+        ),
+        encoding="utf-8",
+    )
+    (master_dir / "drawers.json").write_text(
+        json.dumps(
+            [
+                {
+                    "id": "drawer-a",
+                    "rackId": "rack-1",
+                    "row": 0,
+                    "col": 0,
+                    "label": "A",
+                    "pixelRange": {"start": 0, "count": 5},
+                },
+                {
+                    "id": "drawer-b",
+                    "rackId": "rack-1",
+                    "row": 0,
+                    "col": 1,
+                    "label": "B",
+                    "pixelRange": {"start": 5, "count": 5},
+                },
+            ]
+        ),
+        encoding="utf-8",
+    )
+    (master_dir / "parts.json").write_text(
+        json.dumps(
+            [
+                {
+                    "id": "part-1",
+                    "name": "Resistor 1k",
+                    "categoryId": "cat-1",
+                    "manufacturerId": "mfg-1",
+                    "drawerId": "drawer-a",
+                    "tags": [],
+                    "quantity": 10,
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+
+def test_simulate_route_highlights_matching_drawer_green(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _write_simulate_fixture(tmp_path)
+
+    with _running_server(tmp_path, monkeypatch) as base_url:
+        with urllib.request.urlopen(f"{base_url}/simulate?q=resistor") as response:
+            html = response.read().decode("utf-8")
+
+    assert "rgb(0,255,0)" in html  # drawer-a, matched
+    assert "rgb(0,0,0)" in html  # drawer-b, not matched
+    assert ">A<" in html
+    assert ">B<" in html
+
+
+def test_simulate_route_clears_highlight_when_query_is_cleared(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _write_simulate_fixture(tmp_path)
+
+    with _running_server(tmp_path, monkeypatch) as base_url:
+        with urllib.request.urlopen(f"{base_url}/simulate?q=resistor") as response:
+            assert "rgb(0,255,0)" in response.read().decode("utf-8")
+
+        with urllib.request.urlopen(f"{base_url}/simulate") as response:
+            html = response.read().decode("utf-8")
+
+    assert "rgb(0,255,0)" not in html
+    assert html.count("rgb(0,0,0)") == 2
