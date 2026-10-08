@@ -18,6 +18,19 @@ def validate_list_payload(
         item_validator(item, source, f"item {index}")
 
 
+def validate_wled_device(item: Any, source: str, location: str) -> None:
+    _validate_fields(
+        item,
+        source,
+        location,
+        required=[
+            ("id", _validate_string),
+            ("host", _validate_string),
+            ("hardwareConnected", _validate_bool),
+        ],
+    )
+
+
 def validate_rack(item: Any, source: str, location: str) -> None:
     _validate_fields(
         item,
@@ -218,6 +231,11 @@ def _validate_string(value: Any, source: str, location: str) -> None:
 def _validate_optional_string(value: Any, source: str, location: str) -> None:
     if value is not None and not isinstance(value, str):
         _raise(source, f"{location} expected string or null, got {type(value).__name__}")
+
+
+def _validate_bool(value: Any, source: str, location: str) -> None:
+    if not isinstance(value, bool):
+        _raise(source, f"{location} expected boolean, got {type(value).__name__}")
 
 
 def _validate_int(value: Any, source: str, location: str) -> None:

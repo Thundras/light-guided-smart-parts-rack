@@ -1,5 +1,6 @@
 {
   "master": {
+    "wled_devices.json": "master/wled_devices.schema.json",
     "racks.json": "master/racks.schema.json",
     "drawers.json": "master/drawers.schema.json",
     "parts.json": "master/parts.schema.json",

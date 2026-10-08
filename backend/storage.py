@@ -20,6 +20,7 @@ from .models import (
     Reservation,
     StockMovement,
     Tag,
+    WledDevice,
 )
 from .schema import (
     SchemaValidationError,
@@ -37,6 +38,7 @@ from .schema import (
     validate_reservation,
     validate_stock_movement,
     validate_tag,
+    validate_wled_device,
 )
 
 T = TypeVar("T")
@@ -44,6 +46,7 @@ T = TypeVar("T")
 
 @dataclass(frozen=True)
 class MasterDataPaths:
+    wled_devices: Path
     racks: Path
     drawers: Path
     parts: Path
@@ -56,6 +59,7 @@ class MasterDataPaths:
     def from_root(cls, root: Path) -> "MasterDataPaths":
         master_root = root / "data" / "master"
         return cls(
+            wled_devices=master_root / "wled_devices.json",
             racks=master_root / "racks.json",
             drawers=master_root / "drawers.json",
             parts=master_root / "parts.json",
@@ -96,6 +100,16 @@ class JsonMasterDataStore:
         with path.open("w", encoding="utf-8") as handle:
             json.dump(payload, handle, indent=2, ensure_ascii=False)
             handle.write("\n")
+
+    def load_wled_devices(self) -> List[WledDevice]:
+        return self._load_list(
+            self._paths.wled_devices, WledDevice.from_dict, validate_wled_device
+        )
+
+    def save_wled_devices(self, devices: Sequence[WledDevice]) -> None:
+        self._save_list(
+            self._paths.wled_devices, devices, WledDevice.to_dict, validate_wled_device
+        )
 
     def load_racks(self) -> List[Rack]:
         return self._load_list(self._paths.racks, Rack.from_dict, validate_rack)

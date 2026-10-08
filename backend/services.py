@@ -17,6 +17,7 @@ from .models import (
     Reservation,
     StockMovement,
     Tag,
+    WledDevice,
 )
 from .storage import JsonIndexDataStore, JsonMasterDataStore, JsonMovementDataStore
 
@@ -68,7 +69,7 @@ def _delete_by_id(items: Sequence[T], item_id: str, key: Callable[[T], str], lab
 
 class CrudService(Generic[T]):
     """Generic id-keyed CRUD over a load/save pair. Used wherever an entity type has a plain
-    list-of-records JSON store with a single id field — covers all seven master data entities
+    list-of-records JSON store with a single id field — covers all eight master data entities
     identically, so each one just supplies its own load/save/key instead of repeating the CRUD
     logic."""
 
@@ -108,6 +109,9 @@ class CrudService(Generic[T]):
 class MasterDataService:
     def __init__(self, store: JsonMasterDataStore) -> None:
         self._store = store
+        self._wled_devices = CrudService(
+            store.load_wled_devices, store.save_wled_devices, lambda x: x.id, "WledDevice"
+        )
         self._racks = CrudService(store.load_racks, store.save_racks, lambda x: x.id, "Rack")
         self._drawers = CrudService(
             store.load_drawers, store.save_drawers, lambda x: x.id, "Drawer"
@@ -123,6 +127,21 @@ class MasterDataService:
         self._locations = CrudService(
             store.load_locations, store.save_locations, lambda x: x.id, "Location"
         )
+
+    def list_wled_devices(self) -> List[WledDevice]:
+        return self._wled_devices.list()
+
+    def get_wled_device(self, device_id: str) -> WledDevice:
+        return self._wled_devices.get(device_id)
+
+    def create_wled_device(self, device: WledDevice) -> None:
+        self._wled_devices.create(device)
+
+    def update_wled_device(self, device: WledDevice) -> None:
+        self._wled_devices.update(device)
+
+    def delete_wled_device(self, device_id: str) -> None:
+        self._wled_devices.delete(device_id)
 
     def list_racks(self) -> List[Rack]:
         return self._racks.list()
@@ -233,6 +252,7 @@ class MasterDataService:
         """Serialize every master data entity to plain dicts, keyed by entity name — the
         inverse of import_all, used for the maintenance export/backup flow."""
         return {
+            "wledDevices": [item.to_dict() for item in self.list_wled_devices()],
             "racks": [item.to_dict() for item in self.list_racks()],
             "drawers": [item.to_dict() for item in self.list_drawers()],
             "parts": [item.to_dict() for item in self.list_parts()],
@@ -252,6 +272,7 @@ class MasterDataService:
         raises ImportValidationError listing every problem found, not just the first one.
         """
         specs: Dict[str, tuple] = {
+            "wledDevices": (WledDevice.from_dict, self._store.save_wled_devices),
             "racks": (Rack.from_dict, self._store.save_racks),
             "drawers": (Drawer.from_dict, self._store.save_drawers),
             "parts": (Part.from_dict, self._store.save_parts),

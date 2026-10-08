@@ -7,6 +7,7 @@ from backend.models import (
     Rack,
     Reservation,
     StockMovement,
+    WledDevice,
 )
 import pytest
 
@@ -29,6 +30,30 @@ def build_repo_root(tmp_path: Path) -> Path:
     (repo_root / "data" / "movements").mkdir(parents=True)
     (repo_root / "data" / "indexes").mkdir(parents=True)
     return repo_root
+
+
+def test_master_data_service_wled_device_crud(tmp_path: Path) -> None:
+    repo_root = build_repo_root(tmp_path)
+    devices_path = repo_root / "data" / "master" / "wled_devices.json"
+    write_json(devices_path, [])
+
+    service = MasterDataService(JsonMasterDataStore(repo_root))
+    device = WledDevice(id="wled-main", host="192.168.1.50", hardware_connected=False)
+    service.create_wled_device(device)
+
+    assert json.loads(devices_path.read_text(encoding="utf-8")) == [
+        {"id": "wled-main", "host": "192.168.1.50", "hardwareConnected": False}
+    ]
+
+    service.update_wled_device(
+        WledDevice(id="wled-main", host="192.168.1.51", hardware_connected=True)
+    )
+    updated = service.get_wled_device("wled-main")
+    assert updated.host == "192.168.1.51"
+    assert updated.hardware_connected is True
+
+    service.delete_wled_device("wled-main")
+    assert service.list_wled_devices() == []
 
 
 def test_master_data_service_crud(tmp_path: Path) -> None:
@@ -76,6 +101,7 @@ def test_master_data_export_import_round_trip(tmp_path: Path) -> None:
     racks_path = repo_root / "data" / "master" / "racks.json"
     categories_path = repo_root / "data" / "master" / "categories.json"
     for name in (
+        "wled_devices",
         "racks",
         "drawers",
         "parts",

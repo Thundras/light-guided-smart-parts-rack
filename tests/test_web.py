@@ -5,7 +5,7 @@ import urllib.request
 from contextlib import contextmanager
 from http.server import HTTPServer
 from pathlib import Path
-from typing import Iterator
+from typing import Iterator, Optional
 
 import pytest
 
@@ -90,6 +90,7 @@ def _build_master_data_dir(tmp_path: Path) -> Path:
     master_dir = tmp_path / "data" / "master"
     master_dir.mkdir(parents=True)
     for name in (
+        "wled_devices",
         "racks",
         "drawers",
         "parts",
@@ -174,8 +175,11 @@ def test_import_route_rejects_invalid_payload_and_shows_errors(
     assert exported["racks"] == []
 
 
-def _write_simulate_fixture(tmp_path: Path) -> None:
+def _write_simulate_fixture(tmp_path: Path, wled_devices: Optional[list] = None) -> None:
     master_dir = _build_master_data_dir(tmp_path)
+    (master_dir / "wled_devices.json").write_text(
+        json.dumps(wled_devices if wled_devices is not None else []), encoding="utf-8"
+    )
     (master_dir / "racks.json").write_text(
         json.dumps(
             [{"id": "rack-1", "name": "Main", "wledInstance": "wled-main", "rows": 1, "drawersPerRow": 2}]
@@ -252,3 +256,39 @@ def test_simulate_route_clears_highlight_when_query_is_cleared(
 
     assert "rgb(0,255,0)" not in html
     assert html.count("rgb(0,0,0)") == 2
+
+
+def test_simulate_route_shows_simulated_badge_when_device_not_connected(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _write_simulate_fixture(
+        tmp_path,
+        wled_devices=[{"id": "wled-main", "host": "127.0.0.1:1", "hardwareConnected": False}],
+    )
+
+    with _running_server(tmp_path, monkeypatch) as base_url:
+        with urllib.request.urlopen(f"{base_url}/simulate") as response:
+            html = response.read().decode("utf-8")
+
+    assert "(simulated)" in html
+    assert "live" not in html
+    assert "Hardware unreachable" not in html  # device isn't connected, so no hardware call
+
+
+def test_simulate_route_reports_unreachable_hardware_without_failing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _write_simulate_fixture(
+        tmp_path,
+        wled_devices=[{"id": "wled-main", "host": "127.0.0.1:1", "hardwareConnected": True}],
+    )
+
+    with _running_server(tmp_path, monkeypatch) as base_url:
+        with urllib.request.urlopen(f"{base_url}/simulate?q=resistor") as response:
+            assert response.status == 200
+            html = response.read().decode("utf-8")
+
+    assert "live" in html  # badge still shows the device as configured-connected
+    assert "Hardware unreachable" in html
+    assert "wled-main" in html
+    assert "rgb(0,255,0)" in html  # simulation still highlighted despite the hardware failure

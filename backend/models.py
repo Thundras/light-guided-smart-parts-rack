@@ -18,6 +18,33 @@ class PixelRange:
 
 
 @dataclass(frozen=True)
+class WledDevice:
+    """A single physical ESP32/WLED instance. One device can drive multiple racks (via different
+    pixel ranges on its strip(s)) — racks reference a device by Rack.wled_instance == this id.
+    hardware_connected is the per-device "go live" switch: while false, pick-by-light for every
+    rack on this device stays simulation-only even if the device record otherwise exists."""
+
+    id: str
+    host: str
+    hardware_connected: bool = False
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "WledDevice":
+        return cls(
+            id=str(data["id"]),
+            host=str(data["host"]),
+            hardware_connected=bool(data["hardwareConnected"]),
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "id": self.id,
+            "host": self.host,
+            "hardwareConnected": self.hardware_connected,
+        }
+
+
+@dataclass(frozen=True)
 class Rack:
     id: str
     name: str

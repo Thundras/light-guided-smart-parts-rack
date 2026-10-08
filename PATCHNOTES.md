@@ -16,6 +16,14 @@
   `PickByLightService`) and a `/simulate` web view that highlights matching drawers green on a
   visual rack grid — usable and demoable with no physical ESP32/WLED hardware. Real hardware
   control (`HttpWledController`) is deferred until hardware exists; see `docs/decisions.md`.
+- Add real WLED hardware control after all: new `wled_devices.json` master data entity
+  (`id`, `host`, `hardwareConnected`) — one ESP32/WLED device can drive multiple racks — plus
+  `HttpWledController` (WLED's real JSON HTTP API, built and tested against a fake HTTP server)
+  and `DispatchingWledController`, which always updates the simulation and *additionally* calls
+  real hardware only for devices with `hardwareConnected: true`. `/simulate` now shows a
+  "🔌 live" / "(simulated)" badge per rack and reports (deduplicated) hardware errors without
+  failing the page — one unreachable ESP32 doesn't block any other rack. See `docs/decisions.md`
+  for why this was built before any physical device exists.
 - Documented generic rack layouts, multi-ESP32 support, and UI scope.
 - Document proposed JSON file structure for master and movement data.
 - Add empty JSON data files for the proposed structure.

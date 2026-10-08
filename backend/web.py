@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Iterable
 from urllib.parse import parse_qs, urlparse
 
-from .lighting import MockWledController, PickByLightService
+from .lighting import DispatchingWledController, HttpWledController, MockWledController, PickByLightService
 from .schema import SchemaValidationError
 from .services import ImportValidationError, MasterDataService, PartSearchCriteria, PartSearchService
 from .storage import JsonMasterDataStore
@@ -16,7 +16,11 @@ from .storage import JsonMasterDataStore
 # One simulated WLED controller per server process, so repeated /simulate requests (and the
 # search form on that page) accumulate against the same simulated rack state instead of each
 # request starting from a blank slate — matches what a real, persistent WLED device would do.
+# Every /simulate request routes through DispatchingWledController, which always updates this
+# (so the view stays meaningful even for racks whose ESP32 is actually live) and additionally
+# calls _hardware_controller for any WledDevice with hardwareConnected=true.
 _simulated_controller = MockWledController()
+_hardware_controller = HttpWledController()
 
 
 def reset_simulated_controller() -> None:
@@ -119,15 +123,24 @@ def _render_import_form(message: str | None = None, errors: Iterable[str] = ()) 
     return _render_layout("Import", body)
 
 
-def _render_simulate(master: MasterDataService, controller: MockWledController, query: str) -> str:
+def _render_simulate(
+    master: MasterDataService,
+    controller: MockWledController,
+    query: str,
+    hardware_errors: Iterable[str] = (),
+) -> str:
     """Pick-by-light simulation: runs a search against the query, highlights matching drawers
     green on the shared simulated controller, and renders each configured rack as a grid of
     drawers colored by the controller's current (post-search) state. Lets the pick-by-light
-    behavior be seen and demoed without any real WLED/ESP32 hardware."""
+    behavior be seen and demoed without any real WLED/ESP32 hardware — and keeps showing the
+    same view once a rack's ESP32 does go live (its drawers just also actually light up)."""
     racks = master.list_racks()
     drawers_by_rack: dict[str, list] = {rack.id: [] for rack in racks}
     for drawer in master.list_drawers():
         drawers_by_rack.setdefault(drawer.rack_id, []).append(drawer)
+    connected_instances = {
+        device.id for device in master.list_wled_devices() if device.hardware_connected
+    }
 
     search_form = f"""
     <form method="get" action="/simulate">
@@ -136,8 +149,19 @@ def _render_simulate(master: MasterDataService, controller: MockWledController, 
     </form>
     """
 
+    hardware_errors = list(hardware_errors)
+    errors_block = ""
+    if hardware_errors:
+        items = "".join(f"<li>{_escape(err)}</li>" for err in hardware_errors)
+        errors_block = (
+            f'<div class="message"><strong>Hardware unreachable (simulation still shown '
+            f"below):</strong><ul>{items}</ul></div>"
+        )
+
     if not racks:
-        return _render_layout("Simulate", search_form + '<p class="message">No racks configured yet.</p>')
+        return _render_layout(
+            "Simulate", search_form + errors_block + '<p class="message">No racks configured yet.</p>'
+        )
 
     racks_html = []
     for rack in racks:
@@ -155,12 +179,13 @@ def _render_simulate(master: MasterDataService, controller: MockWledController, 
                     f'<td style="background: rgb({r},{g},{b})">{_escape(drawer.label)}</td>'
                 )
             rows_html.append("<tr>" + "".join(cells) + "</tr>")
+        live_badge = " 🔌 live" if rack.wled_instance in connected_instances else " (simulated)"
         racks_html.append(
-            f'<div class="rack"><h2>{_escape(rack.name)}</h2>'
+            f'<div class="rack"><h2>{_escape(rack.name)}{live_badge}</h2>'
             f'<table class="rack-grid">{"".join(rows_html)}</table></div>'
         )
 
-    return _render_layout("Simulate", search_form + "".join(racks_html))
+    return _render_layout("Simulate", search_form + errors_block + "".join(racks_html))
 
 
 def _escape(text: str) -> str:
@@ -258,8 +283,19 @@ class WebUIRequestHandler(BaseHTTPRequestHandler):
         matches = (
             PartSearchService(store).search_parts(PartSearchCriteria(query=query)) if query else []
         )
-        PickByLightService(master, _simulated_controller).highlight_parts(matches)
-        return _render_simulate(master, _simulated_controller, query)
+
+        # One error per unique WLED instance, not one per drawer on that instance — a rack with
+        # 20 drawers on an offline ESP32 would otherwise show the same message 20 times.
+        hardware_errors: dict[str, str] = {}
+        dispatcher = DispatchingWledController(
+            master,
+            _simulated_controller,
+            _hardware_controller,
+            on_hardware_error=lambda instance, exc: hardware_errors.setdefault(instance, str(exc)),
+        )
+        PickByLightService(master, dispatcher).highlight_parts(matches)
+        error_messages = [f"{instance}: {msg}" for instance, msg in hardware_errors.items()]
+        return _render_simulate(master, _simulated_controller, query, error_messages)
 
     def _inventory_page(self) -> str:
         store = JsonMasterDataStore(_repo_root())

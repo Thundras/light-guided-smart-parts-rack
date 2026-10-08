@@ -23,9 +23,11 @@
   `MockWledController` and a `/simulate` web view so the feature is usable and demoable without
   any physical ESP32/WLED hardware. Already routes per-rack to the correct `wled_instance`, so
   multiple simultaneous racks/targets work in the simulation.
-- ☐ Add the real WLED control integration (`HttpWledController`, calling WLED's JSON HTTP API) —
-  blocked on hardware actually existing.
-- ☐ Verify multiple ESP32 targets against real hardware.
+- ☑ Add the real WLED control integration (`HttpWledController`, calling WLED's JSON HTTP API)
+  and a new `wled_devices.json` master data entity with a per-device `hardwareConnected` switch
+  (`DispatchingWledController`) — built and tested against a fake HTTP server, since one ESP32
+  can drive multiple racks and racks can be configured well before their ESP32 exists.
+- ☐ Verify against real hardware once a first ESP32/WLED device actually exists.
 
 ## Milestone 4 — Usability and scale
 **Outcome:** System is optimized for larger datasets and richer metadata management.

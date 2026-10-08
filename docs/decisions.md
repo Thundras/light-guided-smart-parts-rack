@@ -93,3 +93,41 @@ change once hardware exists, rather than letting the whole feature block on hard
 The visual `/simulate` view (not just unit-test assertions on the mock's recorded state) was
 specifically requested, so the feature is genuinely demoable — seeing the rack light up on screen
 — rather than only verifiable by reading test code.
+
+## 2026-10-08: Build real WLED hardware control before any hardware exists, switched per-ESP32
+
+### Context
+After the simulation-only decision above, the user asked to build the real `HttpWledController`
+now too, rather than waiting for hardware — reasoning: they can configure a rack as soon as it's
+physically built and then "flip a switch" to have it drive real hardware, without the software
+blocking on hardware existing first. One ESP32 can drive multiple racks (and a rack's pixel
+strip could, in principle, span devices in the future), so the natural place for a "go live"
+switch is the WLED device itself, not the rack.
+
+### Decision
+- New master data entity `WledDevice` (`wled_devices.json`): `id`, `host` (network address),
+  `hardwareConnected` (bool). `Rack.wled_instance` now refers to a `WledDevice.id`, not a raw
+  host — the host is resolved through the device record.
+- `HttpWledController` implements the real WLED JSON HTTP API (`POST /json/state` with a `seg`
+  pixel-range + solid color), using only `urllib.request` (stdlib, no new dependency, consistent
+  with the project's framework-free constraint). Not exercised against a real device yet, but
+  fully built and tested against a fake local HTTP server.
+- `DispatchingWledController` wraps a simulated and a hardware controller: every call **always**
+  updates the simulated one (so `/simulate` stays meaningful regardless of hardware status — "the
+  visualization runs in parallel", as requested), and **additionally** calls the hardware
+  controller, but only for WLED instances whose device record has `hardwareConnected: true`. A
+  hardware call that fails (`WledConnectionError`) is caught and reported through a callback
+  rather than propagating, so one offline ESP32 doesn't block pick-by-light for every other rack
+  in the same request. `/simulate` deduplicates these errors per device (not per drawer) before
+  display.
+
+### Reasoning
+Switching per-WLED-device rather than per-rack or globally matches the actual physical
+relationship the user described: one ESP32 can serve several racks, and new racks get configured
+in software well before their hardware exists, so the toggle needs to live on the thing that
+actually has a hardware/no-hardware state — the device — not on each rack that happens to use it.
+Dual-writing to the simulated controller even when hardware is connected means `/simulate` never
+needs special-casing for "is this rack live or not" beyond a status badge; it keeps reflecting the
+logical pick-by-light state either way. Catching hardware errors at the dispatch boundary (rather
+than, say, requiring the caller to handle them per-rack) keeps `PickByLightService` itself
+unaware that hardware can fail at all — it only ever talks to the `WledController` interface.

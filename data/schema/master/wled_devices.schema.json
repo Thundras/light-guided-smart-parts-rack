@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "wled_devices.schema.json",
+  "title": "WLED Devices",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["id", "host", "hardwareConnected"],
+    "properties": {
+      "id": { "type": "string" },
+      "host": { "type": "string" },
+      "hardwareConnected": { "type": "boolean" }
+    }
+  }
+}

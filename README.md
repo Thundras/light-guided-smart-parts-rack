@@ -33,7 +33,9 @@ data/
 ```
 
 #### `data/master/` (master data)
-- `racks.json` – racks including the WLED/ESP32 instance
+- `wled_devices.json` – physical ESP32/WLED instances (`id`, `host`, `hardwareConnected`); one
+  device can drive multiple racks
+- `racks.json` – racks including which WLED/ESP32 instance (`wled_devices.json` id) they use
 - `drawers.json` – drawers/slots including pixel ranges
 - `parts.json` – parts/items
 - `categories.json` – categories
@@ -74,10 +76,28 @@ data/
 - The web UI will be implemented in Python rather than C# to keep the stack consistent with the JSON backend tooling.
 - Movement and index JSON files are supported for load/save operations, matching the schema layout.
 
+## Pick-by-light: simulated and real hardware side by side
+Racks can be configured and used fully before any ESP32 exists. Each configured rack points at a
+`wled_devices.json` entry (by id); that device's `hardwareConnected` flag is the per-ESP32 switch:
+- `false` (default): pick-by-light for every rack on that device is simulation-only.
+- `true`: pick-by-light *also* sends the real WLED JSON HTTP API call to that device's `host`, in
+  addition to updating the simulation — so `/simulate` keeps showing the same view either way, and
+  flipping one device's switch on doesn't require touching any rack/drawer configuration. If a
+  connected device can't actually be reached, that one device's error is shown on the page but
+  doesn't block pick-by-light for any other rack.
+
+See [`docs/decisions.md`](docs/decisions.md) for why this is built hardware-first instead of
+waiting for a physical device to exist.
+
 ## UI skeleton (Python)
 Run the minimal web UI locally with:
 ```
 python -m backend.web
 ```
-Navigate to `http://localhost:8000` for the home view and `http://localhost:8000/inventory`
-for the inventory table view.
+- `http://localhost:8000` – home
+- `http://localhost:8000/inventory` – inventory table view
+- `http://localhost:8000/export` / `/import` – master data maintenance (see Export/Import nav links)
+- `http://localhost:8000/simulate?q=<search>` – pick-by-light view (search box on the page itself)
+
+`SMART_RACK_REPO_ROOT` overrides which directory's `data/` the server reads/writes — used by the
+test suite to run the live server against a scratch directory instead of this project's own data.
