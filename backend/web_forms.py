@@ -68,12 +68,14 @@ def _render_layout(title: str, body: str) -> str:
       form.stacked .checkbox label {{ margin: 0; }}
       form.stacked .form-actions {{ margin-top: 1.25rem; display: flex; gap: 0.6rem; }}
       .rack {{ margin-bottom: 2rem; }}
-      .rack-grid {{ border-collapse: collapse; width: auto; }}
-      .rack-grid td {{
-        width: 4.5rem; height: 2.5rem; text-align: center; vertical-align: middle;
+      .rack-grid {{ display: flex; flex-direction: column; }}
+      .rack-grid .rack-row {{ display: flex; }}
+      .rack-grid .rack-cell {{
+        flex: 1 1 0; height: 2.5rem; display: flex; align-items: center; justify-content: center;
         font-size: 0.8rem; color: #fff; text-shadow: 0 0 2px #000; border: 1px solid var(--border);
+        text-align: center;
       }}
-      .rack-grid td.empty {{ background: transparent; border: none; }}
+      .rack-grid .rack-cell.empty {{ background: transparent; border: none; }}
     </style>
   </head>
   <body>
@@ -185,22 +187,28 @@ def _render_simulate(
     for rack in racks:
         by_position = {(d.row, d.col): d for d in drawers_by_rack.get(rack.id, [])}
         rows_html = []
+        # Every row is a flex container at the rack's full width, so a shorter row's drawers
+        # stretch to fill it equally rather than leaving a ragged edge — the rack always renders
+        # as a rectangle, regardless of how many columns each individual row has.
+        max_cols = max(rack.row_layout)
         for row, col_count in enumerate(rack.row_layout):
             cells = []
             for col in range(col_count):
                 drawer = by_position.get((row, col))
                 if drawer is None:
-                    cells.append('<td class="empty"></td>')
+                    cells.append('<div class="rack-cell empty"></div>')
                     continue
                 r, g, b = controller.color_for(rack.wled_instance, drawer.pixel_range)
                 cells.append(
-                    f'<td style="background: rgb({r},{g},{b})">{_escape(drawer.label)}</td>'
+                    f'<div class="rack-cell" style="background: rgb({r},{g},{b})">'
+                    f"{_escape(drawer.label)}</div>"
                 )
-            rows_html.append("<tr>" + "".join(cells) + "</tr>")
+            rows_html.append(f'<div class="rack-row">{"".join(cells)}</div>')
         live_badge = " 🔌 live" if rack.wled_instance in connected_instances else " (simulated)"
         racks_html.append(
             f'<div class="rack"><h2>{_escape(rack.name)}{live_badge}</h2>'
-            f'<table class="rack-grid">{"".join(rows_html)}</table></div>'
+            f'<div class="rack-grid" style="width: {max_cols * 4.5}rem">'
+            f'{"".join(rows_html)}</div></div>'
         )
 
     return _render_layout("Simulate", search_form + errors_block + "".join(racks_html))

@@ -1,6 +1,9 @@
 # Patch Notes
 
 ## Unreleased
+- `/simulate`'s rack grid now renders as a rectangle: each row's drawer cells stretch to fill
+  the rack's full width (a flexbox row per rack row), instead of using a fixed cell width that
+  left shorter rows with a ragged right edge.
 - Replace `Rack.rows`/`Rack.drawersPerRow` with `Rack.rowLayout` (per-row column counts, e.g.
   `[3, 2, 4]` for a jagged rack), and auto-generate a rack's drawers from that layout on
   create/edit (`MasterDataService.sync_drawers_for_rack`) — previously every drawer had to be
