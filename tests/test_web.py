@@ -3,7 +3,7 @@ import threading
 import urllib.parse
 import urllib.request
 from contextlib import contextmanager
-from http.server import HTTPServer
+from http.server import ThreadingHTTPServer
 from pathlib import Path
 from typing import Iterator, Optional
 
@@ -76,7 +76,7 @@ def _running_server(repo_root: Path, monkeypatch: pytest.MonkeyPatch) -> Iterato
     requests (body parsing, file writes) rather than just the pure render functions above."""
     monkeypatch.setenv("SMART_RACK_REPO_ROOT", str(repo_root))
     web.reset_simulated_controller()
-    server = HTTPServer(("127.0.0.1", 0), WebUIRequestHandler)
+    server = ThreadingHTTPServer(("127.0.0.1", 0), WebUIRequestHandler)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     try:

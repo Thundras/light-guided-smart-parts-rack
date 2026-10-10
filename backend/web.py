@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import os
 from http import HTTPStatus
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, HTTPServer, ThreadingHTTPServer
 from pathlib import Path
 from typing import Iterable
 from urllib.parse import parse_qs, urlparse
@@ -344,7 +344,12 @@ def _normalize_path(path: str) -> str:
 
 
 def run(host: str = "0.0.0.0", port: int = 8000) -> None:
-    server = HTTPServer((host, port), WebUIRequestHandler)
+    # ThreadingHTTPServer, not plain HTTPServer: a real browser opens several simultaneous
+    # connections to the same page (parallel resource loads, favicon, keep-alive probing). A
+    # single-threaded server serializes all of them, so any one slow/stuck connection blocks
+    # every other request — including completely unrelated button clicks — until it resolves.
+    # Confirmed this was actually happening (not just a theoretical concern) interactively.
+    server = ThreadingHTTPServer((host, port), WebUIRequestHandler)
     print(f"Web UI running at http://{host}:{port}")
     server.serve_forever()
 
