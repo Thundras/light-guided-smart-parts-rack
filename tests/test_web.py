@@ -11,7 +11,7 @@ import pytest
 
 from backend import web
 from backend.models import Part
-from backend.web import WebUIRequestHandler, _normalize_path, _render_home, _render_inventory
+from backend.web import WebUIRequestHandler, _normalize_path, _render_home, _render_parts_list
 
 
 def test_render_home_includes_navigation_message() -> None:
@@ -20,13 +20,13 @@ def test_render_home_includes_navigation_message() -> None:
     assert "Use the navigation to access inventory data." in content
 
 
-def test_render_inventory_empty_state() -> None:
-    content = _render_inventory([])
+def test_render_parts_list_empty_state() -> None:
+    content = _render_parts_list([])
 
-    assert "No parts available." in content
+    assert "No parts yet." in content
 
 
-def test_render_inventory_with_parts() -> None:
+def test_render_parts_list_with_parts() -> None:
     parts = [
         Part(
             id="part-1",
@@ -39,16 +39,16 @@ def test_render_inventory_with_parts() -> None:
         )
     ]
 
-    content = _render_inventory(parts)
+    content = _render_parts_list(parts)
 
     assert "Resistor 1k" in content
     assert "100" in content
 
 
-def test_render_inventory_html_structure() -> None:
-    content = _render_inventory([])
+def test_render_parts_list_html_structure() -> None:
+    content = _render_parts_list([])
 
-    assert "<title>Inventory</title>" in content
+    assert "<title>Parts</title>" in content
     assert "<nav>" in content
     assert "<table>" in content
 
@@ -292,3 +292,207 @@ def test_simulate_route_reports_unreachable_hardware_without_failing(
     assert "Hardware unreachable" in html
     assert "wled-main" in html
     assert "rgb(0,255,0)" in html  # simulation still highlighted despite the hardware failure
+
+
+def _post_form(base_url: str, path: str, fields: dict) -> str:
+    body = urllib.parse.urlencode(fields).encode("utf-8")
+    request = urllib.request.Request(f"{base_url}{path}", data=body, method="POST")
+    with urllib.request.urlopen(request) as response:
+        return response.read().decode("utf-8")
+
+
+def test_wled_device_create_edit_delete_cycle(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _build_master_data_dir(tmp_path)
+
+    with _running_server(tmp_path, monkeypatch) as base_url:
+        _post_form(
+            base_url, "/wled-devices/new",
+            {"id": "wled-main", "host": "192.168.1.50"},  # hardwareConnected left unchecked
+        )
+        with urllib.request.urlopen(f"{base_url}/wled-devices") as response:
+            listing = response.read().decode("utf-8")
+        assert "wled-main" in listing
+        assert "192.168.1.50" in listing
+        assert "simulated" in listing  # not connected
+
+        _post_form(
+            base_url, "/wled-devices/wled-main/edit",
+            {"host": "192.168.1.60", "hardwareConnected": "on"},
+        )
+        with urllib.request.urlopen(f"{base_url}/wled-devices") as response:
+            listing = response.read().decode("utf-8")
+        assert "192.168.1.60" in listing
+        assert "🔌 connected" in listing
+
+        _post_form(base_url, "/wled-devices/wled-main/delete", {})
+        with urllib.request.urlopen(f"{base_url}/wled-devices") as response:
+            listing = response.read().decode("utf-8")
+        assert "wled-main" not in listing
+        assert "No WLED devices yet." in listing
+
+
+def test_lookup_create_edit_delete_cycle(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # Category is representative of the three id+name lookups (categories/manufacturers/tags),
+    # which all share the same generic form/route implementation.
+    _build_master_data_dir(tmp_path)
+
+    with _running_server(tmp_path, monkeypatch) as base_url:
+        _post_form(base_url, "/categories/new", {"id": "cat-1", "name": "Resistors"})
+        with urllib.request.urlopen(f"{base_url}/categories") as response:
+            assert "Resistors" in response.read().decode("utf-8")
+
+        _post_form(base_url, "/categories/cat-1/edit", {"name": "Fixed Resistors"})
+        with urllib.request.urlopen(f"{base_url}/categories") as response:
+            listing = response.read().decode("utf-8")
+        assert "Fixed Resistors" in listing
+
+        _post_form(base_url, "/categories/cat-1/delete", {})
+        with urllib.request.urlopen(f"{base_url}/categories") as response:
+            listing = response.read().decode("utf-8")
+        assert "cat-1" not in listing
+        assert "No categories yet." in listing
+
+
+def test_rack_and_drawer_create_edit_delete_cycle(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _build_master_data_dir(tmp_path)
+
+    with _running_server(tmp_path, monkeypatch) as base_url:
+        _post_form(base_url, "/wled-devices/new", {"id": "wled-main", "host": "192.168.1.50"})
+
+        _post_form(
+            base_url, "/racks/new",
+            {
+                "id": "rack-1", "name": "Main Rack", "wledInstance": "wled-main",
+                "rows": "2", "drawersPerRow": "3",
+            },
+        )
+        with urllib.request.urlopen(f"{base_url}/racks") as response:
+            listing = response.read().decode("utf-8")
+        assert "Main Rack" in listing
+        assert "2×3" in listing
+
+        _post_form(
+            base_url, "/drawers/new",
+            {
+                "rackId": "rack-1", "id": "drawer-1", "row": "0", "col": "0",
+                "label": "Resistors", "pixelStart": "0", "pixelCount": "5",
+            },
+        )
+        with urllib.request.urlopen(f"{base_url}/racks/rack-1/drawers") as response:
+            listing = response.read().decode("utf-8")
+        assert "Resistors" in listing
+        assert "0–5" in listing
+
+        _post_form(
+            base_url, "/drawers/drawer-1/edit",
+            {
+                "rackId": "rack-1", "row": "0", "col": "0",
+                "label": "Capacitors", "pixelStart": "0", "pixelCount": "8",
+            },
+        )
+        with urllib.request.urlopen(f"{base_url}/racks/rack-1/drawers") as response:
+            listing = response.read().decode("utf-8")
+        assert "Capacitors" in listing
+        assert "0–8" in listing
+
+        _post_form(base_url, "/drawers/drawer-1/delete", {})
+        with urllib.request.urlopen(f"{base_url}/racks/rack-1/drawers") as response:
+            listing = response.read().decode("utf-8")
+        assert "Capacitors" not in listing
+        assert "No drawers yet." in listing
+
+        _post_form(base_url, "/racks/rack-1/delete", {})
+        with urllib.request.urlopen(f"{base_url}/racks") as response:
+            listing = response.read().decode("utf-8")
+        assert "Main Rack" not in listing
+
+
+def test_part_create_edit_delete_cycle_with_dropdowns(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _build_master_data_dir(tmp_path)
+
+    with _running_server(tmp_path, monkeypatch) as base_url:
+        _post_form(base_url, "/wled-devices/new", {"id": "wled-main", "host": "192.168.1.50"})
+        _post_form(
+            base_url, "/racks/new",
+            {
+                "id": "rack-1", "name": "Main Rack", "wledInstance": "wled-main",
+                "rows": "1", "drawersPerRow": "1",
+            },
+        )
+        _post_form(
+            base_url, "/drawers/new",
+            {
+                "rackId": "rack-1", "id": "drawer-1", "row": "0", "col": "0",
+                "label": "Bin A", "pixelStart": "0", "pixelCount": "5",
+            },
+        )
+        _post_form(base_url, "/categories/new", {"id": "cat-1", "name": "Resistors"})
+        _post_form(base_url, "/manufacturers/new", {"id": "mfg-1", "name": "Vishay"})
+
+        # the part form's dropdowns should already offer what was just created
+        with urllib.request.urlopen(f"{base_url}/parts/new") as response:
+            form_html = response.read().decode("utf-8")
+        assert "Resistors" in form_html
+        assert "Vishay" in form_html
+        assert "Main Rack / Bin A" in form_html
+
+        _post_form(
+            base_url, "/parts/new",
+            {
+                "id": "part-1", "name": "Resistor 1k", "categoryId": "cat-1",
+                "manufacturerId": "mfg-1", "drawerId": "drawer-1", "quantity": "100",
+                "tags": "resistor, through-hole",
+            },
+        )
+        with urllib.request.urlopen(f"{base_url}/parts") as response:
+            listing = response.read().decode("utf-8")
+        assert "Resistor 1k" in listing
+        assert "100" in listing
+
+        _post_form(
+            base_url, "/parts/part-1/edit",
+            {
+                "name": "Resistor 1k 1%", "categoryId": "cat-1", "manufacturerId": "mfg-1",
+                "drawerId": "drawer-1", "quantity": "50", "tags": "resistor",
+            },
+        )
+        with urllib.request.urlopen(f"{base_url}/parts") as response:
+            listing = response.read().decode("utf-8")
+        assert "Resistor 1k 1%" in listing
+        assert "50" in listing
+
+        _post_form(base_url, "/parts/part-1/delete", {})
+        with urllib.request.urlopen(f"{base_url}/parts") as response:
+            listing = response.read().decode("utf-8")
+        assert "Resistor 1k" not in listing
+        assert "No parts yet." in listing
+
+
+def test_rack_form_shows_validation_error_without_writing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _build_master_data_dir(tmp_path)
+
+    with _running_server(tmp_path, monkeypatch) as base_url:
+        _post_form(base_url, "/wled-devices/new", {"id": "wled-main", "host": "192.168.1.50"})
+
+        body = urllib.parse.urlencode(
+            {
+                "id": "rack-1", "name": "Main Rack", "wledInstance": "wled-main",
+                "rows": "not-a-number", "drawersPerRow": "3",
+            }
+        ).encode("utf-8")
+        request = urllib.request.Request(f"{base_url}/racks/new", data=body, method="POST")
+        with urllib.request.urlopen(request) as response:
+            html = response.read().decode("utf-8")
+        assert "Please fix the following" in html
+
+        with urllib.request.urlopen(f"{base_url}/racks") as response:
+            listing = response.read().decode("utf-8")
+        assert "Main Rack" not in listing  # nothing was written

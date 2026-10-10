@@ -24,6 +24,19 @@
   "🔌 live" / "(simulated)" badge per rack and reports (deduplicated) hardware errors without
   failing the page — one unreachable ESP32 doesn't block any other rack. See `docs/decisions.md`
   for why this was built before any physical device exists.
+- Fix `HTTPServer` → `ThreadingHTTPServer`: the plain single-threaded server serialized a real
+  browser's simultaneous connections, so one slow request blocked every other one (including
+  unrelated button clicks) until it resolved — only surfaced interactively, not via the test
+  suite, which never issues concurrent requests.
+- Add real maintenance forms (create/edit/delete) for every master data entity: racks & their
+  drawers together, parts with category/manufacturer/drawer dropdowns, a shared generic
+  id+name form for categories/manufacturers/tags, and WLED devices. New regex-based route table
+  in `backend/web.py` (replacing the old flat `if path == ...` chain) to support path parameters
+  like `/racks/<id>/edit`. Also a real visual style pass (`backend/web_forms.py`'s `<style>`
+  block) — consistent spacing, buttons, nav highlighting, form layout — replacing the handful of
+  original skeleton CSS lines. Split the by-then 1270-line `web.py` into `web.py` (HTTP
+  mechanics), `web_forms.py` (shared/general page rendering), and `web_forms_entities.py`
+  (entity-specific rendering), per `CLAUDE.md`'s file-size guidance.
 - Documented generic rack layouts, multi-ESP32 support, and UI scope.
 - Document proposed JSON file structure for master and movement data.
 - Add empty JSON data files for the proposed structure.

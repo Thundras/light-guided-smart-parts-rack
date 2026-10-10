@@ -14,6 +14,10 @@
 - ☑ Establish a minimal web UI skeleton in Python (navigation and inventory views).
 - ☑ Implement search and filtering APIs to support the UI.
 - ☑ Add import/export maintenance flows for master data.
+- ☑ Add real maintenance forms (create/edit/delete) for every master data entity — racks &
+  drawers, parts with category/manufacturer/drawer dropdowns, categories/manufacturers/tags, and
+  WLED devices — plus a real visual style pass. Previously the only way to add a rack or part was
+  hand-writing JSON into the `/import` textarea.
 
 ## Milestone 3 — Pick-by-light enablement
 **Outcome:** Hardware control is integrated and configurable for multiple racks.

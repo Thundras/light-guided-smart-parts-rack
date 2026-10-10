@@ -131,3 +131,42 @@ needs special-casing for "is this rack live or not" beyond a status badge; it ke
 logical pick-by-light state either way. Catching hardware errors at the dispatch boundary (rather
 than, say, requiring the caller to handle them per-rack) keeps `PickByLightService` itself
 unaware that hardware can fail at all — it only ever talks to the `WledController` interface.
+
+## 2026-10-10: Maintenance UI — route table, module split, and the 500-line guideline
+
+### Context
+The UI had no way to create/edit/delete a rack, drawer, part, or WLED device except hand-editing
+JSON and pasting it into `/import` — not usable day to day. Building real forms for 7 entity
+types (`Location` excluded — unused, see the entry two above) meant going from 8 flat, static
+routes to roughly 30 with path parameters (`/racks/<id>/edit`), and `backend/web.py` grew past
+1270 lines in the process.
+
+### Decision
+- **Regex route table** instead of the flat `if path == "/foo":` chain: a module-level list of
+  `(method, compiled_pattern, handler_name)` tuples, checked in order, with path segments captured
+  via named groups (`?P<rack_id>`) and passed as kwargs to the handler method.
+- **Module split**: `backend/web.py` keeps HTTP mechanics only (routing, request/response
+  handling, the `WebUIRequestHandler` class). Page rendering moved out to `backend/web_forms.py`
+  (shared/general: layout, nav, home, import, simulate, error/confirm-delete helpers) and
+  `backend/web_forms_entities.py` (WLED devices, the id+name lookups, racks/drawers, parts) —
+  pure functions, no HTTP/socket code, easy to read and test in isolation from request handling.
+- **Shared generic form for categories/manufacturers/tags**: all three are structurally identical
+  (`{id, name}`), so one `_LookupSpec`-parameterized route set and render pair covers all three
+  instead of three near-identical copies — same reasoning as the earlier `CrudService` extraction.
+- **`web.py` (723 lines) and `services.py` (589 lines) stay over `CLAUDE.md`'s 500-line
+  guideline, deliberately.** Both are one cohesive class each (`WebUIRequestHandler`,
+  `MasterDataService`) — splitting further would mean fragmenting a single class's methods across
+  multiple files rather than separating genuinely different concerns, which is worse for
+  readability than one longer file. The guideline's purpose (keep related code easy to find and
+  reason about) is better served by two large-but-coherent files here than by an arbitrary split.
+
+### Reasoning
+The route table change was forced by path parameters, not a style preference — a flat chain
+cannot match `/racks/<id>/edit` without the same regex machinery anyway, so formalizing it as a
+small table is the straightforward solution, not an added abstraction. The module split follows
+the same "split once size is visible, not up front" approach as the rest of this project: it
+wasn't planned as three files from the start, only once the single-file version became genuinely
+hard to navigate. The two remaining oversized files were a deliberate stopping point: both are
+single classes where the 500-line guideline and "one cohesive unit per file" pull in opposite
+directions, and the project's own existing practice (e.g. `MasterDataService` not being split
+entity-by-entity) already favors the latter.
