@@ -185,9 +185,9 @@ def _render_simulate(
     for rack in racks:
         by_position = {(d.row, d.col): d for d in drawers_by_rack.get(rack.id, [])}
         rows_html = []
-        for row in range(rack.rows):
+        for row, col_count in enumerate(rack.row_layout):
             cells = []
-            for col in range(rack.drawers_per_row):
+            for col in range(col_count):
                 drawer = by_position.get((row, col))
                 if drawer is None:
                     cells.append('<td class="empty"></td>')

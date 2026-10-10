@@ -15,7 +15,8 @@ originally planned C#).
 ## Configuration needs
 - Rack sizes can vary and use drawer-based storage.
 - Layout must be generic with no fixed dimensions, counts, or arrangement.
-- The number of rows and drawers per row must be configurable.
+- Each rack's row layout (how many drawers per row, independently per row) must be
+  configurable, since physical racks can be irregular/jagged.
 - The number of LEDs per drawer must be configurable.
 - Each rack must declare which ESP32/WLED instance it uses.
 - Each drawer must declare which pixel range it maps to.

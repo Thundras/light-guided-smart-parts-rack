@@ -49,8 +49,7 @@ class Rack:
     id: str
     name: str
     wled_instance: str
-    rows: int
-    drawers_per_row: int
+    row_layout: List[int]
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "Rack":
@@ -58,8 +57,7 @@ class Rack:
             id=str(data["id"]),
             name=str(data["name"]),
             wled_instance=str(data["wledInstance"]),
-            rows=int(data["rows"]),
-            drawers_per_row=int(data["drawersPerRow"]),
+            row_layout=[int(count) for count in data["rowLayout"]],
         )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -67,8 +65,7 @@ class Rack:
             "id": self.id,
             "name": self.name,
             "wledInstance": self.wled_instance,
-            "rows": self.rows,
-            "drawersPerRow": self.drawers_per_row,
+            "rowLayout": list(self.row_layout),
         }
 
 

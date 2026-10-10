@@ -6,13 +6,16 @@
   "items": {
     "type": "object",
     "additionalProperties": false,
-    "required": ["id", "name", "wledInstance", "rows", "drawersPerRow"],
+    "required": ["id", "name", "wledInstance", "rowLayout"],
     "properties": {
       "id": { "type": "string" },
       "name": { "type": "string" },
       "wledInstance": { "type": "string" },
-      "rows": { "type": "integer", "minimum": 1 },
-      "drawersPerRow": { "type": "integer", "minimum": 1 }
+      "rowLayout": {
+        "type": "array",
+        "minItems": 1,
+        "items": { "type": "integer", "minimum": 1 }
+      }
     }
   }
 }

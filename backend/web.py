@@ -329,16 +329,16 @@ class WebUIRequestHandler(BaseHTTPRequestHandler):
                 id=form.get("id", "").strip(),
                 name=form.get("name", "").strip(),
                 wled_instance=form.get("wledInstance", "").strip(),
-                rows=int(form.get("rows", "0")),
-                drawers_per_row=int(form.get("drawersPerRow", "0")),
+                row_layout=_parse_row_layout(form.get("rowLayout", "")),
             )
             if not rack.id:
                 raise ValueError("id is required")
             service.create_rack(rack)
+            service.sync_drawers_for_rack(rack)
         except (ValueError, SchemaValidationError) as exc:
             self._send_html(_render_rack_form(service.list_wled_devices(), errors=[str(exc)]))
             return
-        self._redirect("/racks")
+        self._redirect(f"/racks/{rack.id}/drawers")
 
     @_route("GET", r"^/racks/(?P<rack_id>[^/]+)/edit$")
     def _rack_edit_form(self, rack_id: str) -> None:
@@ -354,19 +354,24 @@ class WebUIRequestHandler(BaseHTTPRequestHandler):
     def _rack_update(self, rack_id: str) -> None:
         form = self._read_form()
         service = self._service()
+        name = form.get("name", "").strip()
+        wled_instance = form.get("wledInstance", "").strip()
         try:
             rack = Rack(
                 id=rack_id,
-                name=form.get("name", "").strip(),
-                wled_instance=form.get("wledInstance", "").strip(),
-                rows=int(form.get("rows", "0")),
-                drawers_per_row=int(form.get("drawersPerRow", "0")),
+                name=name,
+                wled_instance=wled_instance,
+                row_layout=_parse_row_layout(form.get("rowLayout", "")),
             )
             service.update_rack(rack)
+            service.sync_drawers_for_rack(rack)
         except (ValueError, SchemaValidationError) as exc:
-            self._send_html(_render_rack_form(service.list_wled_devices(), rack, errors=[str(exc)]))
+            fallback = Rack(id=rack_id, name=name, wled_instance=wled_instance, row_layout=[1])
+            self._send_html(
+                _render_rack_form(service.list_wled_devices(), fallback, errors=[str(exc)])
+            )
             return
-        self._redirect("/racks")
+        self._redirect(f"/racks/{rack.id}/drawers")
 
     @_route("GET", r"^/racks/(?P<rack_id>[^/]+)/delete$")
     def _rack_delete_confirm(self, rack_id: str) -> None:
@@ -691,6 +696,21 @@ def _repo_root() -> Path:
     if override:
         return Path(override)
     return Path(__file__).resolve().parents[1]
+
+
+def _parse_row_layout(raw: str) -> list[int]:
+    """Parse a comma-separated "columns per row" field (e.g. "4, 3, 4, 2") into a list of ints."""
+    parts = [p.strip() for p in raw.split(",")]
+    parts = [p for p in parts if p]
+    if not parts:
+        raise ValueError("row layout is required, e.g. '4, 3, 4, 2'")
+    try:
+        counts = [int(p) for p in parts]
+    except ValueError:
+        raise ValueError(f"row layout must be comma-separated integers, got '{raw}'") from None
+    if any(count < 1 for count in counts):
+        raise ValueError("row layout values must be positive integers")
+    return counts
 
 
 def _normalize_path(path: str) -> str:

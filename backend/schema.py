@@ -40,8 +40,7 @@ def validate_rack(item: Any, source: str, location: str) -> None:
             ("id", _validate_string),
             ("name", _validate_string),
             ("wledInstance", _validate_string),
-            ("rows", _validate_int),
-            ("drawersPerRow", _validate_int),
+            ("rowLayout", _validate_row_layout),
         ],
     )
 
@@ -252,6 +251,14 @@ def _validate_list_of_strings(value: Any, source: str, location: str) -> None:
                 source,
                 f"{location}[{index}] expected string, got {type(item).__name__}",
             )
+
+
+def _validate_row_layout(value: Any, source: str, location: str) -> None:
+    if not isinstance(value, list) or not value:
+        _raise(source, f"{location} expected non-empty list of integers, got {type(value).__name__}")
+    for index, item in enumerate(value):
+        if isinstance(item, bool) or not isinstance(item, int) or item < 1:
+            _raise(source, f"{location}[{index}] expected positive integer, got {item!r}")
 
 
 def _validate_pixel_range(value: Any, source: str, location: str) -> None:

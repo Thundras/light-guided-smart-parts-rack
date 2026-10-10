@@ -170,3 +170,35 @@ hard to navigate. The two remaining oversized files were a deliberate stopping p
 single classes where the 500-line guideline and "one cohesive unit per file" pull in opposite
 directions, and the project's own existing practice (e.g. `MasterDataService` not being split
 entity-by-entity) already favors the latter.
+
+## 2026-10-10: Per-row rack layout with auto-generated drawers
+
+### Context
+Testing the just-shipped maintenance UI surfaced two gaps: `Rack.rows` + `Rack.drawersPerRow`
+forces every row to have the same column count, but real racks can be irregular; and creating a
+rack didn't create its drawers, leaving the tedious, unexpected step of adding every drawer by
+hand afterward.
+
+### Decision
+- `Rack.rows`/`Rack.drawersPerRow` → `Rack.rowLayout: List[int]` (e.g. `[3, 2, 4]` = row 0 has 3
+  columns, row 1 has 2, row 2 has 4). A breaking schema change, not a migration — no real
+  inventory data existed yet.
+- New `MasterDataService.sync_drawers_for_rack(rack) -> int`: for every `(row, col)` cell implied
+  by `rack.rowLayout` that doesn't already have a drawer, creates one with a deterministic id
+  (`"{rack.id}-r{row}c{col}"`), a placeholder label, and a 1-pixel pixel range continuing from the
+  highest existing pixel-range end for that rack. Existing drawers are never modified — growing a
+  layout only adds the new cells.
+- The web layer calls `sync_drawers_for_rack` right after a rack create/update and redirects to
+  `/racks/<id>/drawers` (not `/racks`), so the generated drawers are immediately visible. The rack
+  form now takes one comma-separated "row layout" text field instead of two number inputs.
+
+### Reasoning
+Sequential 1-pixel defaults match what the user confirmed they wanted as a starting point —
+adjustable per drawer afterward via the existing edit form, not meant to be the final pixel
+mapping. Never touching existing drawers when the layout grows (rather than regenerating
+everything) means a user's manual edits — renamed labels, corrected pixel ranges — survive rack
+edits, which is the same "don't silently overwrite what the user already customized" principle as
+the earlier decision to leave orphaned drawers in place on rack deletion rather than cascading.
+Redirecting to the drawers list instead of the racks list directly answers the usability
+complaint that triggered this change: the user expected the drawers to "come from the rack
+configuration," so they should see them without an extra click.

@@ -40,7 +40,7 @@ def _build_master_service(tmp_path: Path) -> MasterDataService:
 def test_highlight_parts_lights_matching_drawer_green_and_others_off(tmp_path: Path) -> None:
     service = _build_master_service(tmp_path)
     service.create_rack(
-        Rack(id="rack-1", name="Main", wled_instance="wled-main", rows=1, drawers_per_row=2)
+        Rack(id="rack-1", name="Main", wled_instance="wled-main", row_layout=[2])
     )
     drawer_a = Drawer(
         id="drawer-a",
@@ -82,7 +82,7 @@ def test_highlight_parts_lights_matching_drawer_green_and_others_off(tmp_path: P
 def test_highlight_parts_clears_previous_highlight_on_new_search(tmp_path: Path) -> None:
     service = _build_master_service(tmp_path)
     service.create_rack(
-        Rack(id="rack-1", name="Main", wled_instance="wled-main", rows=1, drawers_per_row=2)
+        Rack(id="rack-1", name="Main", wled_instance="wled-main", row_layout=[2])
     )
     drawer_a = Drawer(
         id="drawer-a",

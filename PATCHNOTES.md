@@ -1,6 +1,13 @@
 # Patch Notes
 
 ## Unreleased
+- Replace `Rack.rows`/`Rack.drawersPerRow` with `Rack.rowLayout` (per-row column counts, e.g.
+  `[3, 2, 4]` for a jagged rack), and auto-generate a rack's drawers from that layout on
+  create/edit (`MasterDataService.sync_drawers_for_rack`) — previously every drawer had to be
+  added by hand after creating the rack. New drawers get sequential 1-pixel default ranges;
+  growing a rack's layout later only adds the missing cells and never touches drawers the user
+  has already edited. The rack form is now one comma-separated "row layout" text field instead
+  of two number inputs, and saving a rack redirects straight to its drawers list.
 - Replace `brain.yaml` (Codex-era governance) with `CLAUDE.md`; same documentation discipline,
   consolidated into one file.
 - Fix README intro still describing the web UI as C#-based after the Python decision.

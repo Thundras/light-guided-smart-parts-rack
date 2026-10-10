@@ -109,7 +109,7 @@ def test_export_route_returns_master_data_as_json(
     master_dir = _build_master_data_dir(tmp_path)
     (master_dir / "racks.json").write_text(
         json.dumps(
-            [{"id": "rack-1", "name": "Main", "wledInstance": "wled-main", "rows": 1, "drawersPerRow": 1}]
+            [{"id": "rack-1", "name": "Main", "wledInstance": "wled-main", "rowLayout": [1]}]
         ),
         encoding="utf-8",
     )
@@ -134,8 +134,7 @@ def test_import_route_round_trip_via_export(
                 "id": "rack-1",
                 "name": "Main",
                 "wledInstance": "wled-main",
-                "rows": 1,
-                "drawersPerRow": 1,
+                "rowLayout": [1],
             }
         ]
     }
@@ -182,7 +181,7 @@ def _write_simulate_fixture(tmp_path: Path, wled_devices: Optional[list] = None)
     )
     (master_dir / "racks.json").write_text(
         json.dumps(
-            [{"id": "rack-1", "name": "Main", "wledInstance": "wled-main", "rows": 1, "drawersPerRow": 2}]
+            [{"id": "rack-1", "name": "Main", "wledInstance": "wled-main", "rowLayout": [2]}]
         ),
         encoding="utf-8",
     )
@@ -367,28 +366,23 @@ def test_rack_and_drawer_create_edit_delete_cycle(
             base_url, "/racks/new",
             {
                 "id": "rack-1", "name": "Main Rack", "wledInstance": "wled-main",
-                "rows": "2", "drawersPerRow": "3",
+                "rowLayout": "2, 3",
             },
         )
         with urllib.request.urlopen(f"{base_url}/racks") as response:
             listing = response.read().decode("utf-8")
         assert "Main Rack" in listing
-        assert "2×3" in listing
+        assert "2, 3" in listing
 
-        _post_form(
-            base_url, "/drawers/new",
-            {
-                "rackId": "rack-1", "id": "drawer-1", "row": "0", "col": "0",
-                "label": "Resistors", "pixelStart": "0", "pixelCount": "5",
-            },
-        )
+        # creating the rack auto-generates its drawers from the row layout
         with urllib.request.urlopen(f"{base_url}/racks/rack-1/drawers") as response:
             listing = response.read().decode("utf-8")
-        assert "Resistors" in listing
-        assert "0–5" in listing
+        assert "rack-1-r0c0" in listing
+        assert "rack-1-r1c2" in listing
+        assert "0–1" in listing  # sequential 1-pixel default ranges
 
         _post_form(
-            base_url, "/drawers/drawer-1/edit",
+            base_url, "/drawers/rack-1-r0c0/edit",
             {
                 "rackId": "rack-1", "row": "0", "col": "0",
                 "label": "Capacitors", "pixelStart": "0", "pixelCount": "8",
@@ -399,11 +393,21 @@ def test_rack_and_drawer_create_edit_delete_cycle(
         assert "Capacitors" in listing
         assert "0–8" in listing
 
-        _post_form(base_url, "/drawers/drawer-1/delete", {})
+        # re-saving the rack with a bigger layout only adds the new cells
+        _post_form(
+            base_url, "/racks/rack-1/edit",
+            {"name": "Main Rack", "wledInstance": "wled-main", "rowLayout": "2, 3, 1"},
+        )
         with urllib.request.urlopen(f"{base_url}/racks/rack-1/drawers") as response:
             listing = response.read().decode("utf-8")
-        assert "Capacitors" not in listing
-        assert "No drawers yet." in listing
+        assert "Capacitors" in listing  # untouched by the re-sync
+        assert "0–8" in listing
+        assert "rack-1-r2c0" in listing
+
+        _post_form(base_url, "/drawers/rack-1-r2c0/delete", {})
+        with urllib.request.urlopen(f"{base_url}/racks/rack-1/drawers") as response:
+            listing = response.read().decode("utf-8")
+        assert "rack-1-r2c0" not in listing
 
         _post_form(base_url, "/racks/rack-1/delete", {})
         with urllib.request.urlopen(f"{base_url}/racks") as response:
@@ -422,7 +426,7 @@ def test_part_create_edit_delete_cycle_with_dropdowns(
             base_url, "/racks/new",
             {
                 "id": "rack-1", "name": "Main Rack", "wledInstance": "wled-main",
-                "rows": "1", "drawersPerRow": "1",
+                "rowLayout": "1",
             },
         )
         _post_form(
@@ -485,7 +489,7 @@ def test_rack_form_shows_validation_error_without_writing(
         body = urllib.parse.urlencode(
             {
                 "id": "rack-1", "name": "Main Rack", "wledInstance": "wled-main",
-                "rows": "not-a-number", "drawersPerRow": "3",
+                "rowLayout": "not-a-number",
             }
         ).encode("utf-8")
         request = urllib.request.Request(f"{base_url}/racks/new", data=body, method="POST")

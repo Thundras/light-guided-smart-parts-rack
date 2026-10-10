@@ -140,7 +140,7 @@ def _render_lookup_form(spec: _LookupSpec, item=None, errors: Iterable[str] = ()
 def _render_racks_list(racks: Iterable[Rack]) -> str:
     rows = "".join(
         f"<tr><td>{_escape(r.id)}</td><td>{_escape(r.name)}</td>"
-        f"<td>{_escape(r.wled_instance)}</td><td>{r.rows}×{r.drawers_per_row}</td>"
+        f"<td>{_escape(r.wled_instance)}</td><td>{', '.join(str(c) for c in r.row_layout)}</td>"
         f'<td class="row-actions"><a href="/racks/{r.id}/drawers">Drawers</a>'
         f'<a href="/racks/{r.id}/edit">Edit</a><a href="/racks/{r.id}/delete">Delete</a></td></tr>'
         for r in racks
@@ -190,11 +190,11 @@ def _render_rack_form(
       <input type="text" name="name" value="{_escape(rack.name) if rack else ''}" required />
       <label>WLED Device</label>
       {wled_field}
-      <label>Rows</label>
-      <input type="number" name="rows" min="1" value="{rack.rows if rack else 1}" required />
-      <label>Drawers per row</label>
-      <input type="number" name="drawersPerRow" min="1"
-             value="{rack.drawers_per_row if rack else 1}" required />
+      <label>Row layout (columns per row, comma-separated)</label>
+      <input type="text" name="rowLayout" placeholder="4, 3, 4, 2"
+             value="{', '.join(str(c) for c in rack.row_layout) if rack else ''}" required />
+      <p class="message">Drawers are created automatically to match this layout when you save —
+      missing cells are added, existing drawers are never changed or removed.</p>
       <div class="form-actions">
         <button type="submit" class="btn">{"Save" if is_edit else "Create"}</button>
         <a href="/racks" class="btn secondary">Cancel</a>

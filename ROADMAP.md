@@ -18,6 +18,8 @@
   drawers, parts with category/manufacturer/drawer dropdowns, categories/manufacturers/tags, and
   WLED devices — plus a real visual style pass. Previously the only way to add a rack or part was
   hand-writing JSON into the `/import` textarea.
+- ☑ Replace fixed rows×columns racks with a per-row layout (`rowLayout`), and auto-generate a
+  rack's drawers from that layout on create/edit instead of requiring manual drawer creation.
 
 ## Milestone 3 — Pick-by-light enablement
 **Outcome:** Hardware control is integrated and configurable for multiple racks.

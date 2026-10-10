@@ -39,8 +39,7 @@ def test_load_and_save_racks_round_trip(temp_repo_root: Path) -> None:
             "id": "rack-1",
             "name": "Main Rack",
             "wledInstance": "wled-main",
-            "rows": 2,
-            "drawersPerRow": 3,
+            "rowLayout": [2, 3],
         }
     ]
     write_json(racks_path, racks_payload)
@@ -53,8 +52,7 @@ def test_load_and_save_racks_round_trip(temp_repo_root: Path) -> None:
             id="rack-1",
             name="Main Rack",
             wled_instance="wled-main",
-            rows=2,
-            drawers_per_row=3,
+            row_layout=[2, 3],
         )
     ]
 
@@ -63,8 +61,7 @@ def test_load_and_save_racks_round_trip(temp_repo_root: Path) -> None:
             id="rack-2",
             name="Secondary",
             wled_instance="wled-secondary",
-            rows=1,
-            drawers_per_row=2,
+            row_layout=[1, 2],
         )
     ]
     store.save_racks(updated)
@@ -75,8 +72,7 @@ def test_load_and_save_racks_round_trip(temp_repo_root: Path) -> None:
             "id": "rack-2",
             "name": "Secondary",
             "wledInstance": "wled-secondary",
-            "rows": 1,
-            "drawersPerRow": 2,
+            "rowLayout": [1, 2],
         }
     ]
 
@@ -287,8 +283,7 @@ def test_load_invalid_payload_raises_schema_error(temp_repo_root: Path) -> None:
             {
                 "id": "rack-1",
                 "name": "Main Rack",
-                "rows": 2,
-                "drawersPerRow": 3,
+                "rowLayout": [2, 3],
             }
         ],
     )

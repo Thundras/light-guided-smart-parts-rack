@@ -13,6 +13,7 @@ from .models import (
     PartsByCategory,
     PartsByDrawer,
     PartsByTag,
+    PixelRange,
     Rack,
     Reservation,
     StockMovement,
@@ -157,6 +158,32 @@ class MasterDataService:
 
     def delete_rack(self, rack_id: str) -> None:
         self._racks.delete(rack_id)
+
+    def sync_drawers_for_rack(self, rack: Rack) -> int:
+        """Create any drawers missing for `rack.row_layout`'s (row, col) cells. Existing drawers
+        are never modified — growing a rack's layout later only adds the new cells, leaving
+        already-edited drawers (label, pixel range) untouched. Returns how many were created."""
+        existing = [d for d in self._drawers.list() if d.rack_id == rack.id]
+        existing_positions = {(d.row, d.col) for d in existing}
+        next_pixel = max((d.pixel_range.start + d.pixel_range.count for d in existing), default=0)
+
+        created = 0
+        for row, col_count in enumerate(rack.row_layout):
+            for col in range(col_count):
+                if (row, col) in existing_positions:
+                    continue
+                drawer = Drawer(
+                    id=f"{rack.id}-r{row}c{col}",
+                    rack_id=rack.id,
+                    row=row,
+                    col=col,
+                    label=f"R{row}C{col}",
+                    pixel_range=PixelRange(start=next_pixel, count=1),
+                )
+                self._drawers.create(drawer)
+                next_pixel += 1
+                created += 1
+        return created
 
     def list_drawers(self) -> List[Drawer]:
         return self._drawers.list()

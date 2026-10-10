@@ -3,7 +3,9 @@ from pathlib import Path
 
 from backend.models import (
     Adjustment,
+    Drawer,
     PartsByTag,
+    PixelRange,
     Rack,
     Reservation,
     StockMovement,
@@ -66,8 +68,7 @@ def test_master_data_service_crud(tmp_path: Path) -> None:
         id="rack-1",
         name="Main Rack",
         wled_instance="wled-main",
-        rows=2,
-        drawers_per_row=3,
+        row_layout=[2, 3],
     )
     service.create_rack(rack)
 
@@ -77,8 +78,7 @@ def test_master_data_service_crud(tmp_path: Path) -> None:
             "id": "rack-1",
             "name": "Main Rack",
             "wledInstance": "wled-main",
-            "rows": 2,
-            "drawersPerRow": 3,
+            "rowLayout": [2, 3],
         }
     ]
 
@@ -86,14 +86,70 @@ def test_master_data_service_crud(tmp_path: Path) -> None:
         id="rack-1",
         name="Updated",
         wled_instance="wled-main",
-        rows=3,
-        drawers_per_row=4,
+        row_layout=[3, 4],
     )
     service.update_rack(updated)
     assert service.get_rack("rack-1").name == "Updated"
 
     service.delete_rack("rack-1")
     assert json.loads(racks_path.read_text(encoding="utf-8")) == []
+
+
+def test_sync_drawers_for_rack_creates_missing_cells_with_sequential_pixels(
+    tmp_path: Path,
+) -> None:
+    repo_root = build_repo_root(tmp_path)
+    write_json(repo_root / "data" / "master" / "racks.json", [])
+    write_json(repo_root / "data" / "master" / "drawers.json", [])
+
+    service = MasterDataService(JsonMasterDataStore(repo_root))
+    rack = Rack(id="rack-1", name="Main Rack", wled_instance="wled-main", row_layout=[2, 1])
+    service.create_rack(rack)
+
+    created = service.sync_drawers_for_rack(rack)
+    assert created == 3
+
+    drawers = sorted(service.list_drawers(), key=lambda d: (d.row, d.col))
+    assert [(d.row, d.col, d.pixel_range.start, d.pixel_range.count) for d in drawers] == [
+        (0, 0, 0, 1),
+        (0, 1, 1, 1),
+        (1, 0, 2, 1),
+    ]
+
+
+def test_sync_drawers_for_rack_leaves_existing_drawers_untouched(tmp_path: Path) -> None:
+    repo_root = build_repo_root(tmp_path)
+    write_json(repo_root / "data" / "master" / "racks.json", [])
+    write_json(repo_root / "data" / "master" / "drawers.json", [])
+
+    service = MasterDataService(JsonMasterDataStore(repo_root))
+    rack = Rack(id="rack-1", name="Main Rack", wled_instance="wled-main", row_layout=[2])
+    service.create_rack(rack)
+    service.sync_drawers_for_rack(rack)
+
+    # user edits one drawer's label and pixel range after the fact
+    edited = Drawer(
+        id="rack-1-r0c0",
+        rack_id="rack-1",
+        row=0,
+        col=0,
+        label="Resistors",
+        pixel_range=PixelRange(start=10, count=5),
+    )
+    service.update_drawer(edited)
+
+    grown = Rack(id="rack-1", name="Main Rack", wled_instance="wled-main", row_layout=[2, 3])
+    service.update_rack(grown)
+    created = service.sync_drawers_for_rack(grown)
+
+    assert created == 3
+    drawers = {d.id: d for d in service.list_drawers()}
+    assert drawers["rack-1-r0c0"] == edited
+    assert drawers["rack-1-r0c1"].pixel_range.start == 1  # untouched, not part of the growth
+    new_pixel_starts = sorted(
+        d.pixel_range.start for d in drawers.values() if d.id not in ("rack-1-r0c0", "rack-1-r0c1")
+    )
+    assert new_pixel_starts == [15, 16, 17]
 
 
 def test_master_data_export_import_round_trip(tmp_path: Path) -> None:
@@ -114,7 +170,7 @@ def test_master_data_export_import_round_trip(tmp_path: Path) -> None:
 
     service = MasterDataService(JsonMasterDataStore(repo_root))
     service.create_rack(
-        Rack(id="rack-1", name="Main Rack", wled_instance="wled-main", rows=2, drawers_per_row=3)
+        Rack(id="rack-1", name="Main Rack", wled_instance="wled-main", row_layout=[2, 3])
     )
 
     exported = service.export_all()
@@ -123,8 +179,7 @@ def test_master_data_export_import_round_trip(tmp_path: Path) -> None:
             "id": "rack-1",
             "name": "Main Rack",
             "wledInstance": "wled-main",
-            "rows": 2,
-            "drawersPerRow": 3,
+            "rowLayout": [2, 3],
         }
     ]
     assert exported["categories"] == []
@@ -137,8 +192,7 @@ def test_master_data_export_import_round_trip(tmp_path: Path) -> None:
                     "id": "rack-2",
                     "name": "Second Rack",
                     "wledInstance": "wled-second",
-                    "rows": 1,
-                    "drawersPerRow": 1,
+                    "rowLayout": [1],
                 }
             ]
         }
@@ -150,8 +204,7 @@ def test_master_data_export_import_round_trip(tmp_path: Path) -> None:
             "id": "rack-2",
             "name": "Second Rack",
             "wledInstance": "wled-second",
-            "rows": 1,
-            "drawersPerRow": 1,
+            "rowLayout": [1],
         }
     ]
     # categories.json untouched since "categories" wasn't in the import payload.
