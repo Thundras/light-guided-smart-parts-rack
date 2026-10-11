@@ -17,15 +17,39 @@ def _render_layout(title: str, body: str) -> str:
   <head>
     <meta charset="utf-8" />
     <title>{title}</title>
+    <script>
+      // Applied before the body paints, so a dark-mode choice from a previous visit doesn't
+      // flash white first. localStorage is per-browser, which fits this single-user tool.
+      (function () {{
+        try {{
+          var theme = localStorage.getItem("theme");
+          if (theme) document.documentElement.setAttribute("data-theme", theme);
+        }} catch (e) {{}}
+      }})();
+    </script>
     <style>
       :root {{
         --ink: #1f2430; --muted: #6b7280; --border: #e2e5ea; --panel: #f7f8fa;
         --accent: #2f6fed; --accent-dark: #1d4fb8; --danger: #d64545; --danger-dark: #b33434;
+        --bg: #fff; --input-bg: #fff;
+      }}
+      @media (prefers-color-scheme: dark) {{
+        :root:not([data-theme="light"]) {{
+          --ink: #e4e6eb; --muted: #9aa0ab; --border: #363b45; --panel: #20242c;
+          --accent: #5b8def; --accent-dark: #4472c4; --danger: #e06464; --danger-dark: #c74f4f;
+          --bg: #15171c; --input-bg: #1b1e25;
+        }}
+      }}
+      :root[data-theme="dark"] {{
+        --ink: #e4e6eb; --muted: #9aa0ab; --border: #363b45; --panel: #20242c;
+        --accent: #5b8def; --accent-dark: #4472c4; --danger: #e06464; --danger-dark: #c74f4f;
+        --bg: #15171c; --input-bg: #1b1e25;
       }}
       * {{ box-sizing: border-box; }}
+      :root {{ color-scheme: light dark; }}
       body {{
         font-family: -apple-system, Segoe UI, Arial, sans-serif; margin: 0; color: var(--ink);
-        background: #fff;
+        background: var(--bg);
       }}
       header {{ padding: 1.25rem 2rem; border-bottom: 1px solid var(--border); }}
       header h1 {{ margin: 0 0 0.75rem; font-size: 1.4rem; }}
@@ -52,7 +76,7 @@ def _render_layout(title: str, body: str) -> str:
         background: var(--accent); color: #fff; text-decoration: none; font-size: 0.9rem; cursor: pointer;
       }}
       .btn:hover {{ background: var(--accent-dark); }}
-      .btn.secondary {{ background: #fff; color: var(--ink); border-color: var(--border); }}
+      .btn.secondary {{ background: var(--bg); color: var(--ink); border-color: var(--border); }}
       .btn.secondary:hover {{ background: var(--panel); }}
       .btn.danger {{ background: var(--danger); border-color: var(--danger); }}
       .btn.danger:hover {{ background: var(--danger-dark); }}
@@ -62,8 +86,9 @@ def _render_layout(title: str, body: str) -> str:
       form.stacked input[type=text], form.stacked input[type=number],
       form.stacked select, form.stacked textarea {{
         width: 100%; padding: 0.5rem 0.6rem; border: 1px solid var(--border); border-radius: 6px;
-        font-size: 0.95rem; font-family: inherit;
+        font-size: 0.95rem; font-family: inherit; background: var(--input-bg); color: var(--ink);
       }}
+      input[type=text], textarea {{ background: var(--input-bg); color: var(--ink); }}
       form.stacked .checkbox {{ display: flex; align-items: center; gap: 0.5rem; margin-top: 1rem; }}
       form.stacked .checkbox label {{ margin: 0; }}
       form.stacked .form-actions {{ margin-top: 1.25rem; display: flex; gap: 0.6rem; }}
@@ -76,10 +101,22 @@ def _render_layout(title: str, body: str) -> str:
         text-align: center;
       }}
       .rack-grid .rack-cell.empty {{ background: transparent; border: none; }}
+      .theme-toggle {{
+        float: right; background: none; border: 1px solid var(--border); border-radius: 6px;
+        color: var(--muted); padding: 0.35rem 0.6rem; cursor: pointer; font-size: 0.85rem;
+      }}
+      .theme-toggle:hover {{ background: var(--panel); color: var(--ink); }}
     </style>
   </head>
   <body>
     <header>
+      <button class="theme-toggle" type="button" onclick="(function(){{
+        var current = document.documentElement.getAttribute('data-theme')
+          || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        var next = current === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        try {{ localStorage.setItem('theme', next); }} catch (e) {{}}
+      }})()">🌓 Theme</button>
       <h1>Light-Guided Smart Parts Rack</h1>
       <nav>
         {_render_nav(title)}

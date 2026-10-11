@@ -1,6 +1,10 @@
 # Patch Notes
 
 ## Unreleased
+- Add a dark mode: follows the browser's `prefers-color-scheme` by default, plus an explicit
+  toggle button (top right of every page) that overrides it and remembers the choice per browser
+  via `localStorage` — useful when the system preference doesn't take effect (browser-level
+  override, cache) or the user just wants this app dark regardless of the system setting.
 - `/simulate`'s rack grid now renders as a rectangle: each row's drawer cells stretch to fill
   the rack's full width (a flexbox row per rack row), instead of using a fixed cell width that
   left shorter rows with a ragged right edge.
